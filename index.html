@@ -2371,7 +2371,7 @@ function clearHL() {
   activeHL.forEach((_, midi) => {
     const el = document.getElementById('k' + midi);
     if (!el) return;
-    el.classList.remove('hl-treble','hl-bass','hl-both','retrigger');
+    el.classList.remove('hl-treble','hl-bass','hl-both','hl-correct','retrigger');
     el.querySelectorAll('.note-label').forEach(l => l.remove());
   });
   activeHL.clear();
@@ -2892,9 +2892,7 @@ function stopPlay() {
     pressedNotes.clear();
     correctNotes.clear();
     if (followTimer) { clearTimeout(followTimer); followTimer = null; }
-    // Clear any lingering green "correct" key highlights
     document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
-    // Restore normal step highlights
     if (songData && measureSteps.length) showStep(currentStep);
   }
   // ── Stop audio playback ───────────────────────────────
@@ -3467,7 +3465,7 @@ function onFollowNoteOn(note) {
   }
 
   // Advance when all required notes are pressed
-  const allDone = [...required].every(m => pressedNotes.has(m));
+  const allDone = [...required].every(m => correctNotes.has(m));
   if (allDone) scheduleFollowAdvance();
 }
 
@@ -3480,6 +3478,7 @@ function markCorrectKey(midi) {
   const el = document.getElementById('k' + midi);
   if (!el) return;
   el.classList.remove('hl-treble','hl-bass','hl-both');
+  el.querySelectorAll('.note-label').forEach(l => l.remove());
   el.classList.add('hl-correct');
   // Retrigger press animation
   el.classList.remove('retrigger');
@@ -3498,7 +3497,7 @@ function scheduleFollowAdvance() {
   followTimer = setTimeout(() => {
     followTimer = null;
     if (followPlaying) doFollowAdvance();
-  }, 200); // small pause for satisfying visual feedback
+  }, 80); // short pause — too long causes missed notes when playing ahead
 }
 
 function doFollowAdvance() {
@@ -3517,7 +3516,7 @@ function doFollowAdvance() {
   } else {
     // ✅ Completed the full range
     stopPlay();
-    clearHL(); // clear all piano highlights — sequence is done
+    clearHL();
     showToast('✅ ¡Secuencia completada! ¡Bien hecho!', false, 'success');
   }
 }
