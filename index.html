@@ -3573,10 +3573,11 @@ function onMidiToggleChange(enabled) {
   }
 }
 
-// Init MIDI only if user previously enabled it
+// Init MIDI by default; only skip if user explicitly disabled it
 (function initMidiFromPrefs() {
   const tog = document.getElementById('midiToggle');
-  const enabled = localStorage.getItem('pv_midi') === 'on';
+  const pref = localStorage.getItem('pv_midi');
+  const enabled = pref !== 'off'; // default ON — off only when explicitly disabled
   if (tog) tog.checked = enabled;
   if (enabled) initMIDI();
 })();
