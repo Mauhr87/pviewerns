@@ -2893,7 +2893,7 @@ function stopPlay() {
     correctNotes.clear();
     if (followTimer) { clearTimeout(followTimer); followTimer = null; }
     document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
-    if (songData && measureSteps.length) showStep(currentStep);
+    clearHL();
   }
   // ── Stop audio playback ───────────────────────────────
   isPlaying = false;
@@ -2919,6 +2919,8 @@ function startFollowPlay() {
   pressedNotes.clear();
   correctNotes.clear();
   if (followTimer) { clearTimeout(followTimer); followTimer = null; }
+  document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
+  clearHL();
 
   // Ensure step-by-step mode (required for note-by-note advance)
   if (!sequenceMode) {
