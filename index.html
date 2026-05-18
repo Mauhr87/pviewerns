@@ -2394,7 +2394,7 @@ function highlightNotes(noteList) {
     if (!desired.has(midi)) {
       const el = document.getElementById('k' + midi);
       if (el) {
-        el.classList.remove('hl-treble','hl-bass','hl-both','retrigger');
+        el.classList.remove('hl-treble','hl-bass','hl-both','hl-correct','retrigger');
         el.querySelectorAll('.note-label').forEach(l => l.remove());
       }
     }
@@ -2413,6 +2413,8 @@ function highlightNotes(noteList) {
         el.classList.remove('hl-treble','hl-bass','hl-both');
         el.classList.add(cls);
       }
+      // Clear correct-press highlight before retrigger
+      el.classList.remove('hl-correct');
       // Restart retrigger animation
       el.classList.remove('retrigger');
       void el.offsetWidth; // force reflow so animation restarts
@@ -3479,7 +3481,8 @@ function currentStepRequired() {
 function markCorrectKey(midi) {
   const el = document.getElementById('k' + midi);
   if (!el) return;
-  el.classList.remove('hl-treble','hl-bass','hl-both');
+  // Keep hl-treble/bass/both so activeHL stays accurate for diff-based highlightNotes.
+  // hl-correct is layered on top — CSS order makes it visually override the color.
   el.querySelectorAll('.note-label').forEach(l => l.remove());
   el.classList.add('hl-correct');
   // Retrigger press animation
@@ -3510,26 +3513,16 @@ function doFollowAdvance() {
   const atLastMeasure = currentMeasure >= followEnd;
 
   if (!atLastStep) {
+    // Next step within the same measure
     changeStep(1);
   } else if (!atLastMeasure) {
+    // Move to next measure within the range
     changeMeasure(1);
   } else {
+    // ✅ Completed the full range
     stopPlay();
     clearHL();
     showToast('✅ ¡Secuencia completada! ¡Bien hecho!', false, 'success');
-    return;
-  }
-
-  // Repeated-note fix: user may still be holding a key that the new
-  // step also requires — credit it now so the app doesn't freeze.
-  if (followPlaying && pressedNotes.size > 0) {
-    const newReq = currentStepRequired();
-    pressedNotes.forEach(note => {
-      if (newReq.has(note)) { markCorrectKey(note); correctNotes.add(note); }
-    });
-    if (newReq.size > 0 && [...newReq].every(m => correctNotes.has(m))) {
-      scheduleFollowAdvance();
-    }
   }
 }
 
