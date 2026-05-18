@@ -286,6 +286,25 @@ body {
 .key-w.retrigger { animation: keyPressW 0.22s ease-out; }
 .key-b.retrigger { animation: keyPressB 0.22s ease-out; }
 
+/* Pause button (follow mode only) */
+.pause-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--text-dim);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .2s, color .2s;
+}
+.pause-btn:hover { border-color: var(--accent); color: var(--accent); }
+.pause-btn.active {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b55;
+}
+
 /* Loop button */
 .loop-btn {
   width: 30px; height: 30px;
@@ -2203,6 +2222,7 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
     </div>
     <div class="bb-playrow">
       <button class="loop-btn" id="loopBtn" onclick="toggleLoop()" title="Repetir en bucle">🔁</button>
+      <button class="pause-btn" id="pauseBtn" onclick="pauseFollowPlay()" style="display:none" title="Pausar seguimiento">⏸</button>
       <button class="play-btn" id="playBtn" onclick="togglePlay()" title="Reproducir / Detener (Espacio)">▶</button>
       <div class="step-nav" id="stepNav">
         <button class="nav-btn" id="btnStepPrev" onclick="changeStep(-1)" disabled title="Paso anterior (←)">‹</button>
@@ -2780,7 +2800,10 @@ function onRangeEndChange() {
 async function togglePlay() {
   if (!songData) return;
   // Stop whichever session is active
-  if (isPlaying || followPlaying) { stopPlay(); return; }
+  if (isPlaying || followPlaying) { stopPlay(true); return; }
+
+  // ── Follow mode: resume if paused ─────────────────────────────
+  if (followPaused) { resumeFollowPlay(); return; }
 
   // ── Follow mode: wait for MIDI input instead of auto-playing ──
   if (followMode) {
@@ -2886,10 +2909,13 @@ function scheduleMeasure() {
   playTimers.push(t);
 }
 
-function stopPlay() {
+function stopPlay(resetToStart = false) {
   // ── Stop follow play session ───────────────────────────
-  if (followPlaying) {
+  const wasFollowing = followPlaying || followPaused;
+  const startM = followStart; // capture before clearing
+  if (followPlaying || followPaused) {
     followPlaying = false;
+    followPaused  = false;
     pressedNotes.clear();
     correctNotes.clear();
     if (followTimer) { clearTimeout(followTimer); followTimer = null; }
@@ -2897,6 +2923,13 @@ function stopPlay() {
     Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
     document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
     clearHL();
+    const pb = document.getElementById('pauseBtn');
+    if (pb) pb.style.display = 'none';
+    // Reset position to the start of the range that was configured
+    if (resetToStart && wasFollowing) {
+      goToMeasure(startM);
+      highlight(startM - 1);
+    }
   }
   // ── Stop audio playback ───────────────────────────────
   isPlaying = false;
@@ -2934,8 +2967,11 @@ function startFollowPlay() {
     if (btn) btn.textContent = '📊 Todas las notas';
   }
 
+  followPaused = false;
   document.getElementById('playBtn').innerHTML = '<span class="stop-icon"></span>';
   document.getElementById('playBtn').classList.add('playing');
+  const pb = document.getElementById('pauseBtn');
+  if (pb) pb.style.display = 'flex';
 
   // Display first step of starting measure
   highlight(followStart - 1);
@@ -3341,6 +3377,9 @@ let midiInput    = null;   // active MIDIInput port
 let followMode    = false;  // flag: Seguimiento button is ON
 let followPlaying = false;  // flag: active follow-play session (Play pressed with followMode=ON)
 let followStart   = 1;      // first measure of follow session
+let followPaused  = false;  // paused mid-session (position saved)
+let pausedMeasure = 1;      // measure saved at pause
+let pausedStep    = 0;      // step saved at pause
 let followEnd     = 1;      // last measure of follow session
 let pressedNotes  = new Set();  // MIDI note numbers currently held
 let followTimer   = null;       // debounce before advancing
@@ -3498,6 +3537,51 @@ function onFollowNoteOn(note) {
   if (allDone) scheduleFollowAdvance();
 }
 
+function pauseFollowPlay() {
+  if (!followPlaying) return;
+  pausedMeasure = currentMeasure;
+  pausedStep    = currentStep;
+  followPlaying = false;
+  followPaused  = true;
+  // Clear MIDI state
+  pressedNotes.clear();
+  correctNotes.clear();
+  if (followTimer) { clearTimeout(followTimer); followTimer = null; }
+  heldFromPrevStep.clear();
+  Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
+  document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
+  // Keep piano highlighted (don't clearHL) so user sees where they left off
+  // Update UI
+  document.getElementById('playBtn').innerHTML = '▶';
+  document.getElementById('playBtn').classList.remove('playing');
+  const pb = document.getElementById('pauseBtn');
+  if (pb) { pb.style.display = 'none'; }
+  showToast('⏸ Pausado — presiona ▶ para continuar');
+}
+
+function resumeFollowPlay() {
+  if (!followPaused) return;
+  followPaused  = false;
+  followPlaying = true;
+  // Clear MIDI carry-over
+  pressedNotes.clear();
+  correctNotes.clear();
+  if (followTimer) { clearTimeout(followTimer); followTimer = null; }
+  heldFromPrevStep.clear();
+  Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
+  document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
+  // Restore paused position
+  goToMeasure(pausedMeasure);
+  highlight(pausedMeasure - 1);
+  showStep(pausedStep);
+  // Update UI
+  document.getElementById('playBtn').innerHTML = '<span class="stop-icon"></span>';
+  document.getElementById('playBtn').classList.add('playing');
+  const pb = document.getElementById('pauseBtn');
+  if (pb) pb.style.display = 'flex';
+  showToast('▶ Reanudando desde compás ' + pausedMeasure);
+}
+
 function currentStepRequired() {
   if (!songData || !measureSteps.length || currentStep >= measureSteps.length) return new Set();
   return new Set(measureSteps[currentStep].notes.map(n => n.midi));
@@ -3542,9 +3626,21 @@ function doFollowAdvance() {
   } else if (!atLastMeasure) {
     changeMeasure(1);
   } else {
-    stopPlay();
-    clearHL();
-    showToast('✅ ¡Secuencia completada! ¡Bien hecho!', false, 'success');
+    if (loopEnabled) {
+      // Restart from the configured start measure — keep followPlaying = true
+      correctNotes.clear();
+      heldFromPrevStep.clear();
+      Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
+      if (followTimer) { clearTimeout(followTimer); followTimer = null; }
+      document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
+      goToMeasure(followStart);
+      highlight(followStart - 1);
+      showToast('🔁 ¡Bien hecho! Reiniciando desde compás ' + followStart);
+    } else {
+      stopPlay(false); // don't reset position on natural completion
+      clearHL();
+      showToast('✅ ¡Secuencia completada! ¡Bien hecho!', false, 'success');
+    }
   }
 }
 
