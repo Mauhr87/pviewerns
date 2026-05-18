@@ -3499,7 +3499,7 @@ function scheduleFollowAdvance() {
   followTimer = setTimeout(() => {
     followTimer = null;
     if (followPlaying) doFollowAdvance();
-  }, 80); // short pause — too long causes missed notes when playing ahead
+  }, 80); // short pause
 }
 
 function doFollowAdvance() {
@@ -3510,16 +3510,26 @@ function doFollowAdvance() {
   const atLastMeasure = currentMeasure >= followEnd;
 
   if (!atLastStep) {
-    // Next step within the same measure
     changeStep(1);
   } else if (!atLastMeasure) {
-    // Move to next measure within the range
     changeMeasure(1);
   } else {
-    // ✅ Completed the full range
     stopPlay();
     clearHL();
     showToast('✅ ¡Secuencia completada! ¡Bien hecho!', false, 'success');
+    return;
+  }
+
+  // Repeated-note fix: user may still be holding a key that the new
+  // step also requires — credit it now so the app doesn't freeze.
+  if (followPlaying && pressedNotes.size > 0) {
+    const newReq = currentStepRequired();
+    pressedNotes.forEach(note => {
+      if (newReq.has(note)) { markCorrectKey(note); correctNotes.add(note); }
+    });
+    if (newReq.size > 0 && [...newReq].every(m => correctNotes.has(m))) {
+      scheduleFollowAdvance();
+    }
   }
 }
 
