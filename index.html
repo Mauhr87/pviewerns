@@ -3445,12 +3445,7 @@ function onMIDIMessage(e) {
   if (cmd === 0x90 && vel > 0) {
     // Note On
     pressedNotes.add(note);
-    if (followPlaying) {
-      onFollowNoteOn(note);
-    } else if (followMode && !isPlaying) {
-      // User has Seguimiento ON but hasn't pressed Play yet
-      showToast('▶ Presiona Play para iniciar el seguimiento');
-    }
+    if (followPlaying) onFollowNoteOn(note);
   } else if (cmd === 0x80 || (cmd === 0x90 && vel === 0)) {
     // Note Off
     pressedNotes.delete(note);
@@ -3461,21 +3456,16 @@ function onMIDIMessage(e) {
 // ── Follow mode logic ─────────────────────────────────
 function onFollowNoteOn(note) {
   const required = currentStepRequired();
-  // Empty step (rest) — advance on any key press
   if (!required.size) { scheduleFollowAdvance(); return; }
 
-  // Track which required notes have been freshly pressed this step.
-  // correctNotes is cleared on each step advance, so carry-over held notes
-  // from the previous step can never satisfy this check.
   if (required.has(note)) {
+    // Mark this key green
     markCorrectKey(note);
     correctNotes.add(note);
   }
 
-  // Check OUTSIDE the if-block so pressing the last required note always
-  // triggers the advance, even if a wrong note is pressed after all
-  // required ones are already in correctNotes.
-  const allDone = [...required].every(m => correctNotes.has(m));
+  // Advance when all required notes are pressed
+  const allDone = [...required].every(m => pressedNotes.has(m));
   if (allDone) scheduleFollowAdvance();
 }
 
@@ -3573,11 +3563,10 @@ function onMidiToggleChange(enabled) {
   }
 }
 
-// Init MIDI by default; only skip if user explicitly disabled it
+// Init MIDI only if user previously enabled it
 (function initMidiFromPrefs() {
   const tog = document.getElementById('midiToggle');
-  const pref = localStorage.getItem('pv_midi');
-  const enabled = pref !== 'off'; // default ON — off only when explicitly disabled
+  const enabled = localStorage.getItem('pv_midi') === 'on';
   if (tog) tog.checked = enabled;
   if (enabled) initMIDI();
 })();
