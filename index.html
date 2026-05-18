@@ -2892,7 +2892,9 @@ function stopPlay() {
     pressedNotes.clear();
     correctNotes.clear();
     if (followTimer) { clearTimeout(followTimer); followTimer = null; }
-    // Restore step highlights
+    // Clear any lingering green "correct" key highlights
+    document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
+    // Restore normal step highlights
     if (songData && measureSteps.length) showStep(currentStep);
   }
   // ── Stop audio playback ───────────────────────────────
@@ -3515,6 +3517,7 @@ function doFollowAdvance() {
   } else {
     // ✅ Completed the full range
     stopPlay();
+    clearHL(); // clear all piano highlights — sequence is done
     showToast('✅ ¡Secuencia completada! ¡Bien hecho!', false, 'success');
   }
 }
