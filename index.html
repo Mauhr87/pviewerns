@@ -214,12 +214,33 @@ body {
   line-height: 1;
 }
 .play-btn:hover { background: #047857; transform: scale(1.08); box-shadow: 0 3px 12px rgba(5,150,105,0.40); }
-.play-btn.playing { background: #dc2626; box-shadow: 0 2px 8px rgba(220,38,38,0.30); }
-.play-btn.playing:hover { background: #b91c1c; }
+.play-btn.playing { background: #d97706; box-shadow: 0 2px 8px rgba(217,119,6,0.35); }
+.play-btn.playing:hover { background: #b45309; }
 .play-btn .stop-icon {
   display: block; width: 14px; height: 14px;
   background: #fff; border-radius: 3px;
   flex-shrink: 0;
+}
+
+/* Stop button */
+.stop-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  box-shadow: 0 2px 8px rgba(220,38,38,0.30);
+  flex-shrink: 0; padding: 0;
+}
+.stop-btn:hover { background: #b91c1c; transform: scale(1.08); }
+.stop-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; pointer-events: none; }
+.stop-btn .stop-sq {
+  display: block; width: 13px; height: 13px;
+  background: #fff; border-radius: 2px;
 }
 
 /* Step nav */
@@ -1063,6 +1084,7 @@ body {
   .bb-center { gap: 7px; }
   .bb-playrow { gap: 10px; }
   .bottom-bar .play-btn { width: 48px; height: 48px; font-size: 19px; }
+  .bottom-bar .stop-btn { width: 44px; height: 44px; }
   .bottom-bar .loop-btn { width: 40px; height: 40px; font-size: 17px; }
   .bottom-bar .nav-btn  { width: 40px; height: 40px; font-size: 17px; }
   .bottom-bar .clef-btn { padding: 8px 13px; font-size: 12px; }
@@ -2223,8 +2245,8 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
     </div>
     <div class="bb-playrow">
       <button class="loop-btn" id="loopBtn" onclick="toggleLoop()" title="Repetir en bucle">🔁</button>
-      <button class="pause-btn" id="pauseBtn" onclick="pausePlay()" title="Pausar" disabled>⏸</button>
-      <button class="play-btn" id="playBtn" onclick="togglePlay()" title="Reproducir / Detener (Espacio)">▶</button>
+      <button class="play-btn" id="playBtn" onclick="togglePlay()" title="Reproducir / Pausar (Espacio)">▶</button>
+      <button class="stop-btn" id="stopBtn" onclick="stopPlay(true)" title="Detener y volver al inicio"><span class="stop-sq"></span></button>
       <div class="step-nav" id="stepNav">
         <button class="nav-btn" id="btnStepPrev" onclick="changeStep(-1)" disabled title="Paso anterior (←)">‹</button>
         <span class="measure-label">Paso</span>
@@ -2773,6 +2795,7 @@ let loopEnabled      = false;
 let playStartMeasure = 1;
 let playEndMeasure   = 1;
 let playCurrentMeasure = 1;
+let savedStartMeasure = 1; // start measure saved at play begin, restored by stop
 
 function toggleLoop() {
   loopEnabled = !loopEnabled;
@@ -2800,8 +2823,8 @@ function onRangeEndChange() {
 // ════════════════════════════════════════════════════
 async function togglePlay() {
   if (!songData) return;
-  // Stop whichever session is active → resets to start
-  if (isPlaying || followPlaying) { stopPlay(true); return; }
+  // If currently playing → pause (not stop)
+  if (isPlaying || followPlaying) { pausePlay(); return; }
 
   // Resume paused follow session
   if (followPaused) { resumeFollowPlay(); return; }
@@ -2810,10 +2833,9 @@ async function togglePlay() {
   if (audioPaused) {
     audioPaused = false;
     isPlaying   = true;
-    document.getElementById('playBtn').innerHTML = '<span class="stop-icon"></span>';
+    document.getElementById('playBtn').innerHTML = '⏸';
     document.getElementById('playBtn').classList.add('playing');
-    setPauseBtnState(true);
-    scheduleMeasure();
+      scheduleMeasure();
     return;
   }
 
@@ -2831,12 +2853,12 @@ async function togglePlay() {
   playStartMeasure   = currentMeasure;
   playEndMeasure     = getRangeEnd();
   playCurrentMeasure = currentMeasure;
+  savedStartMeasure  = currentMeasure;
 
   isPlaying = true;
   audioPaused = false;
-  document.getElementById('playBtn').innerHTML = '<span class="stop-icon"></span>';
+  document.getElementById('playBtn').innerHTML = '⏸';
   document.getElementById('playBtn').classList.add('playing');
-  setPauseBtnState(true);
 
   playTimers.forEach(t => clearTimeout(t));
   playTimers = [];
@@ -2925,8 +2947,6 @@ function scheduleMeasure() {
 
 function stopPlay(resetToStart = false) {
   // ── Stop follow play session ───────────────────────────
-  const wasFollowing = followPlaying || followPaused;
-  const followStartM = followStart;
   if (followPlaying || followPaused) {
     followPlaying = false;
     followPaused  = false;
@@ -2937,26 +2957,20 @@ function stopPlay(resetToStart = false) {
     Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
     document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
     clearHL();
-    if (resetToStart && wasFollowing) {
-      goToMeasure(followStartM);
-      highlight(followStartM - 1);
-    }
   }
   // ── Stop audio playback ───────────────────────────────
-  const wasAudio = isPlaying || audioPaused;
-  const audioStartM = playStartMeasure;
   isPlaying   = false;
   audioPaused = false;
   playTimers.forEach(t => clearTimeout(t));
   playTimers = [];
   activeNodes.forEach(n => { try { n.stop(); } catch(e){} });
   activeNodes = [];
-  if (resetToStart && wasAudio && !wasFollowing) {
-    goToMeasure(audioStartM);
-    highlight(audioStartM - 1);
+  // ── Reset to configured start measure ────────────────
+  if (resetToStart) {
+    goToMeasure(savedStartMeasure);
+    highlight(savedStartMeasure - 1);
   }
   // ── Reset UI ──────────────────────────────────────────
-  setPauseBtnState(false);
   document.getElementById('playBtn').innerHTML = '▶';
   document.getElementById('playBtn').classList.remove('playing');
 }
@@ -2967,6 +2981,7 @@ function startFollowPlay() {
   const endVal = parseInt(document.getElementById('measureEnd').value);
 
   followStart   = currentMeasure;
+  savedStartMeasure = currentMeasure;
   followEnd     = (!endVal || isNaN(endVal)) ? total
                   : Math.max(currentMeasure, Math.min(endVal, total));
   followPlaying = true;
@@ -2987,9 +3002,8 @@ function startFollowPlay() {
   }
 
   followPaused = false;
-  document.getElementById('playBtn').innerHTML = '<span class="stop-icon"></span>';
+  document.getElementById('playBtn').innerHTML = '⏸';
   document.getElementById('playBtn').classList.add('playing');
-  setPauseBtnState(true);
 
   // Display first step of starting measure
   highlight(followStart - 1);
@@ -3497,11 +3511,6 @@ function updateMIDIDot(on) {
   }
 }
 
-function setPauseBtnState(enabled) {
-  const pb = document.getElementById('pauseBtn');
-  if (!pb) return;
-  pb.disabled = !enabled;
-}
 
 function updateFollowBtn() {
   const btn = document.getElementById('followBtn');
@@ -3574,10 +3583,9 @@ function pausePlay() {
   playTimers = [];
   activeNodes.forEach(n => { try { n.stop(); } catch(e){} });
   activeNodes = [];
-  setPauseBtnState(false);
   document.getElementById('playBtn').innerHTML = '▶';
   document.getElementById('playBtn').classList.remove('playing');
-  showToast('⏸ Pausado en compás ' + playCurrentMeasure + ' — presiona ▶ para continuar');
+
 }
 
 function pauseFollowPlay() {
@@ -3597,8 +3605,7 @@ function pauseFollowPlay() {
   // Update UI
   document.getElementById('playBtn').innerHTML = '▶';
   document.getElementById('playBtn').classList.remove('playing');
-  setPauseBtnState(false);
-  showToast('⏸ Pausado — presiona ▶ para continuar');
+
 }
 
 function resumeFollowPlay() {
@@ -3617,9 +3624,8 @@ function resumeFollowPlay() {
   highlight(pausedMeasure - 1);
   showStep(pausedStep);
   // Update UI
-  document.getElementById('playBtn').innerHTML = '<span class="stop-icon"></span>';
+  document.getElementById('playBtn').innerHTML = '⏸';
   document.getElementById('playBtn').classList.add('playing');
-  setPauseBtnState(true);
   showToast('▶ Reanudando desde compás ' + pausedMeasure);
 }
 
