@@ -2376,7 +2376,7 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
       </div>
       <div class="mob-bp-row" id="mobBpActiveRow" style="display:none">
         <button class="bp-btn active" id="mobBpEnableBtn" onclick="toggleBackingEnabled()">🎵 ON</button>
-        <button class="bp-btn" id="mobBpPianoBtn" onclick="togglePianoMute()">🎹 Piano: ON</button>
+
         <button class="bp-btn danger" onclick="clearBackingTrack()">✕</button>
       </div>
       <div class="mob-bp-row" id="mobBpVolRow" style="display:none" style="align-items:center;gap:8px">
@@ -2448,6 +2448,8 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
         style="display:none" title="Mostrar/ocultar partitura">🎼 <span class="btn-label">Partitura</span></button>
       <button class="piano-toggle-btn active" id="pianoToggleBtn" onclick="togglePianoVisible()"
         title="Mostrar/ocultar teclado">🎹 <span class="btn-label">Teclado</span></button>
+      <button class="piano-toggle-btn active" id="pianoMuteBtn" onclick="togglePianoMute()"
+        title="Silenciar/activar piano">🔊 <span class="btn-label">Piano</span></button>
       <!-- Follow btn here so it's visible on mobile (bb-right is hidden on mobile) -->
       <button class="follow-btn" id="followBtn" onclick="toggleFollowMode()"
         style="display:none" title="Toca las notas en tu piano y la app avanza automáticamente">
@@ -2526,9 +2528,7 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
       <button class="bp-btn active" id="bpEnableBtn" onclick="toggleBackingEnabled()" title="Activar/desactivar backing">
         🎵 Backing: ON
       </button>
-      <button class="bp-btn" id="bpPianoMuteBtn" onclick="togglePianoMute()">
-        🎹 Piano: ON
-      </button>
+
     </div>
 
     <div class="bp-divider" id="bpDivider1" style="display:none"></div>
@@ -3338,10 +3338,10 @@ function syncBackingUI() {
     enBtn.classList.toggle('active', backingEnabled && !locked);
     enBtn.style.opacity = locked ? '0.6' : '';
   }
-  const pmBtn = document.getElementById('bpPianoMuteBtn');
+  const pmBtn = document.getElementById('pianoMuteBtn');
   if (pmBtn) {
-    pmBtn.textContent = pianoMuted ? '🔇 Piano: OFF' : '🎹 Piano: ON';
-    pmBtn.classList.toggle('muted', pianoMuted);
+    pmBtn.innerHTML = (pianoMuted ? '🔇' : '🔊') + ' <span class="btn-label">Piano</span>';
+    pmBtn.classList.toggle('active', !pianoMuted);
   }
   const volEl = document.getElementById('backingVol');
   if (volEl) volEl.value = backingVolume;
@@ -3362,11 +3362,7 @@ function syncBackingUI() {
     mobEnBtn.classList.toggle('active', backingEnabled && !locked);
     mobEnBtn.style.opacity = locked ? '0.6' : '';
   }
-  const mobPmBtn = document.getElementById('mobBpPianoBtn');
-  if (mobPmBtn) {
-    mobPmBtn.textContent = pianoMuted ? '🔇 Piano: OFF' : '🎹 Piano: ON';
-    mobPmBtn.classList.toggle('muted', pianoMuted);
-  }
+
   const mobVol = document.getElementById('mobBackingVol');
   if (mobVol) mobVol.value = backingVolume;
   const mobVolLbl = document.getElementById('mobBackingVolLabel');
