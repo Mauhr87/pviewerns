@@ -2592,7 +2592,7 @@ let backingBlobName = '';     // original file name
 let backingSource   = null;   // active BufferSourceNode
 let backingPreviewSrc = null; // preview source node
 let backingGain     = null;   // GainNode
-let backingVolume   = 0.8;    // 0–1
+let backingVolume   = parseFloat(localStorage.getItem('pianoBackingVolume') ?? '0.8');
 let backingOffsetSec = 0;     // seconds of intro before piano enters
 let backingOriginalBpm = 0;   // BPM when backing was loaded (0 = not set)
 let measureStartBeats = [];   // cumulative beat-position for each measure (multiply by beatSec)
@@ -3216,6 +3216,7 @@ function startBackingAt(offsetSec, atAudioTime) {
 function setBackingVolume(val) {
   backingVolume = parseFloat(val);
   if (backingGain) backingGain.gain.value = backingVolume;
+  try { localStorage.setItem('pianoBackingVolume', backingVolume); } catch(e) {}
   syncBackingUI();
 }
 
@@ -3675,7 +3676,7 @@ function scheduleMeasure(fromBeat = 0) {
           scheduleMeasure();
         }
       } else {
-        stopPlay();
+        stopPlay(true); // reset to start of range on natural end
       }
     } else {
       playCurrentMeasure = next;
