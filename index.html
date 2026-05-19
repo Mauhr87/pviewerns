@@ -212,6 +212,8 @@ body {
   flex-shrink: 0;
   padding: 0;
   line-height: 1;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .play-btn:hover { background: #047857; transform: scale(1.08); box-shadow: 0 3px 12px rgba(5,150,105,0.40); }
 .play-btn.playing { background: #d97706; box-shadow: 0 2px 8px rgba(217,119,6,0.35); }
@@ -235,12 +237,164 @@ body {
   transition: all 0.15s;
   box-shadow: 0 2px 8px rgba(220,38,38,0.30);
   flex-shrink: 0; padding: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .stop-btn:hover { background: #b91c1c; transform: scale(1.08); }
 .stop-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; pointer-events: none; }
 .stop-btn .stop-sq {
   display: block; width: 13px; height: 13px;
   background: #fff; border-radius: 2px;
+}
+
+
+/* ── Backing track button (bb-right, desktop only) ── */
+.backing-icon-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  border: 1.5px solid var(--text-dim);
+  background: transparent; color: var(--text-dim);
+  font-size: 15px; cursor: pointer;
+  transition: all .2s;
+  -webkit-tap-highlight-color: transparent; outline: none;
+  flex-shrink: 0;
+}
+.backing-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.backing-icon-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(16,185,129,0.1); }
+
+/* ── Backing panel (floating, anchored bottom-right) ── */
+.backing-panel {
+  display: none;
+  position: fixed; bottom: 72px; right: 16px;
+  z-index: 300;
+  width: 300px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+  flex-direction: column;
+  overflow: hidden;
+}
+.backing-panel.open { display: flex; }
+.backing-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.backing-panel-title {
+  font-size: 13px; font-weight: 700; color: var(--text);
+}
+.backing-panel-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 16px; cursor: pointer; padding: 0 2px;
+  line-height: 1; outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.backing-panel-body {
+  padding: 14px; display: flex; flex-direction: column; gap: 12px;
+}
+.bp-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.bp-label {
+  font-size: 11px; color: var(--text-dim); font-weight: 600;
+  min-width: 72px;
+}
+.bp-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 8px;
+  border: 1.5px solid var(--text-dim);
+  background: transparent; color: var(--text-dim);
+  font-size: 12px; cursor: pointer;
+  transition: all .2s; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent; outline: none;
+}
+.bp-btn:hover { border-color: var(--accent); color: var(--accent); }
+.bp-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(16,185,129,0.1); }
+.bp-btn.danger  { border-color: #dc2626; color: #dc2626; }
+.bp-btn.danger:hover { background: rgba(220,38,38,0.08); }
+.bp-btn.muted   { border-color: #dc2626; color: #dc2626; background: rgba(220,38,38,0.08); }
+.bp-file-name {
+  font-size: 11px; color: var(--text-dim);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+}
+.bp-range { flex: 1; accent-color: var(--accent); min-width: 0; }
+.bp-range-val { font-size: 11px; color: var(--text-dim); min-width: 30px; text-align: right; }
+.bp-offset-input {
+  width: 64px; padding: 3px 6px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); font-size: 12px; text-align: right;
+}
+.bp-divider { height: 1px; background: var(--border); margin: 0 -14px; }
+
+/* Mobile: backing section inside mob-extras */
+.mob-backing-section { display: flex; flex-direction: column; gap: 10px; }
+.mob-bp-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+
+/* ── Tablet layout (≤1200px, wider than mobile) ─────── */
+@media (max-width: 1200px) {
+  /* Hide text labels — show icon only */
+  .mode-btn .btn-label,
+  .notation-btn .btn-label,
+  .piano-toggle-btn .btn-label,
+  .follow-btn .btn-label { display: none; }
+
+  /* Tighten button padding to save space */
+  .mode-btn, .notation-btn, .piano-toggle-btn { padding: 6px 9px; }
+
+  /* Hide bb-left clef/level — replaced by vista menu btn */
+  .bb-left .clef-selector,
+  .bb-left .level-selector { display: none !important; }
+
+  /* Show vista menu button */
+  #vistaMenuBtn { display: flex !important; }
+}
+
+/* Vista menu button (hidden on desktop, shown on tablet) */
+#vistaMenuBtn {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 8px;
+  border: 1.5px solid var(--text-dim);
+  background: transparent; color: var(--text-dim);
+  font-size: 16px; cursor: pointer;
+  transition: all .2s; flex-shrink: 0;
+  outline: none; -webkit-tap-highlight-color: transparent;
+}
+#vistaMenuBtn:hover { border-color: var(--accent); color: var(--accent); }
+#vistaMenuBtn.active { border-color: var(--accent); color: var(--accent); background: rgba(16,185,129,0.1); }
+
+/* Vista floating panel */
+.vista-panel {
+  display: none;
+  position: fixed; bottom: 72px; left: 16px;
+  z-index: 300;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+  flex-direction: column; overflow: hidden;
+}
+.vista-panel.open { display: flex; }
+.vista-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px 9px;
+  border-bottom: 1px solid var(--border);
+}
+.vista-panel-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.vista-panel-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 16px; cursor: pointer; padding: 0 2px;
+  outline: none; -webkit-tap-highlight-color: transparent;
+}
+.vista-panel-body {
+  padding: 14px; display: flex; flex-direction: column; gap: 14px;
+}
+.vista-panel-label {
+  font-size: 11px; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px;
 }
 
 /* Step nav */
@@ -1822,6 +1976,7 @@ body {
 }
 .level-badge.orig { background: #e8e0f5; color: #5b21b6; }
 .level-badge.simp { background: #dbeafe; color: #1d4ed8; }
+.level-badge.acmp { background: #d1fae5; color: #065f46; }
 .level-badge.basic { background: #d1fae5; color: #065f46; }
 </style>
 </head>
@@ -2055,6 +2210,8 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
       </label>
     </div>
 
+
+
     <hr class="settings-divider">
 
     <div class="settings-section-title">Imprimir partitura</div>
@@ -2192,8 +2349,9 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
     <div class="mob-extras-row">
       <div class="level-selector" id="mobLevelSelector">
         <button class="level-btn active"  id="mLvlOriginal"   onclick="switchLevel('original');closeMobExtras()">Original</button>
-        <button class="level-btn" id="mLvlSimplified" onclick="switchLevel('simplified');closeMobExtras()" disabled>Intermedio</button>
+        <button class="level-btn" id="mLvlIntermediate" onclick="switchLevel('intermediate');closeMobExtras()" disabled>Intermedio</button>
         <button class="level-btn" id="mLvlBasic"      onclick="switchLevel('basic');closeMobExtras()"      disabled>Básico</button>
+        <button class="level-btn" id="mLvlAccompaniment" onclick="switchLevel('accompaniment');closeMobExtras()" disabled>Acomp.</button>
       </div>
     </div>
   </div>
@@ -2207,15 +2365,43 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
         onchange="selectMIDIDevice(this.value)"
         style="flex:1;min-width:0;font-size:13px"></select>
     </div>
+  
+  <div class="mob-extras-section" id="mobBackingSection">
+    <div class="mob-extras-title">🎵 Backing track</div>
+    <div class="mob-backing-section">
+      <div class="mob-bp-row">
+        <button class="bp-btn" onclick="document.getElementById('backingFileInput').click()">📂 Cargar…</button>
+        <span class="bp-file-name" id="mobBackingFileName">Sin archivo</span>
+      </div>
+      <div class="mob-bp-row" id="mobBpActiveRow" style="display:none">
+        <button class="bp-btn active" id="mobBpEnableBtn" onclick="toggleBackingEnabled()">🎵 ON</button>
+        <button class="bp-btn" id="mobBpPianoBtn" onclick="togglePianoMute()">🎹 Piano: ON</button>
+        <button class="bp-btn danger" onclick="clearBackingTrack()">✕</button>
+      </div>
+      <div class="mob-bp-row" id="mobBpVolRow" style="display:none" style="align-items:center;gap:8px">
+        <span class="bp-label">Vol.</span>
+        <input type="range" class="bp-range" id="mobBackingVol" min="0" max="1" step="0.01" value="0.8"
+          oninput="setBackingVolume(this.value);syncBackingUI()">
+        <span id="mobBackingVolLabel" style="font-size:11px;color:var(--text-dim);min-width:28px">80%</span>
+      </div>
+      <div class="mob-bp-row" id="mobBpOffsetRow" style="display:none">
+        <span class="bp-label">Intro (s)</span>
+        <input type="number" class="bp-offset-input" id="mobBackingOffset" value="0.00" min="0" step="0.01"
+          oninput="setBackingOffset(this.value)">
+      </div>
+    </div>
   </div>
+
+</div>
 
 </div>
 
 <!-- BOTTOM BAR -->
 <div class="bottom-bar">
 
-  <!-- Left: clef selector + level selector -->
+  <!-- Left: clef selector + level selector + vista menu (tablet) -->
   <div class="bb-left">
+    <button id="vistaMenuBtn" onclick="toggleVistaPanel()" title="Clave y nivel">🎛️</button>
     <div class="clef-selector">
       <button class="clef-btn btn-both  active" id="btnBoth"   onclick="setClef('both')">Ambas</button>
       <button class="clef-btn btn-treble"        id="btnTreble" onclick="setClef('treble')">𝄞 Sol</button>
@@ -2223,8 +2409,9 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
     </div>
     <div class="level-selector" id="levelSelector" style="display:none">
       <button class="level-btn active" id="lvlOriginal" onclick="switchLevel('original')" title="Versión original">Original</button>
-      <button class="level-btn" id="lvlSimplified" onclick="switchLevel('simplified')" disabled title="Versión intermedia">Intermedio</button>
+      <button class="level-btn" id="lvlIntermediate" onclick="switchLevel('intermediate')" disabled title="Versión intermedia">Intermedio</button>
       <button class="level-btn" id="lvlBasic" onclick="switchLevel('basic')" disabled title="Versión básica">Básico</button>
+      <button class="level-btn" id="lvlAccompaniment" onclick="switchLevel('accompaniment')" disabled title="Acompañamiento">Acomp.</button>
     </div>
   </div>
 
@@ -2254,7 +2441,7 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
         <span class="step-total" id="stepTotal">/ —</span>
         <button class="nav-btn" id="btnStepNext" onclick="changeStep(1)" disabled title="Paso siguiente (→)">›</button>
       </div>
-      <button class="mode-btn" id="modeBtn" onclick="toggleMode()" title="Alterna entre paso a paso y todas las notas">📊 Todas las notas</button>
+      <button class="mode-btn" id="modeBtn" onclick="toggleMode()" title="Alterna entre paso a paso y todas las notas">📊<span class="btn-label"> Todas las notas</span></button>
       <!-- View toggles: always visible (icon-only on mobile via .btn-label) -->
       <button class="notation-btn" id="notationToggle" onclick="toggleNotation()"
         style="display:none" title="Mostrar/ocultar partitura">🎼 <span class="btn-label">Partitura</span></button>
@@ -2271,6 +2458,7 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
 
   <!-- Right: tempo + MIDI device selector (desktop only — follow btn moved to playrow) -->
   <div class="bb-right">
+    <button class="backing-icon-btn" id="backingIconBtn" onclick="toggleBackingPanel()" title="Backing track">🎵</button>
     <div class="tempo-control">
       <span class="measure-label">BPM</span>
       <input type="number" class="tempo-input" id="tempoInput" value="120" min="20" max="400"
@@ -2285,6 +2473,93 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
   </div>
 
 </div><!-- end bottom-bar -->
+
+
+
+<!-- ── Vista panel (tablet: clef + level) ── -->
+<div class="vista-panel" id="vistaPanel">
+  <div class="vista-panel-header">
+    <span class="vista-panel-title">🎛️ Vista</span>
+    <button class="vista-panel-close" onclick="toggleVistaPanel()">✕</button>
+  </div>
+  <div class="vista-panel-body">
+    <div>
+      <div class="vista-panel-label">Clave</div>
+      <div class="clef-selector">
+        <button class="clef-btn btn-both  active" id="vBtnBoth"   onclick="setClef('both');  updateVistaClef()">Ambas</button>
+        <button class="clef-btn btn-treble"        id="vBtnTreble" onclick="setClef('treble');updateVistaClef()">𝄞 Sol</button>
+        <button class="clef-btn btn-bass"          id="vBtnBass"   onclick="setClef('bass');  updateVistaClef()">𝄢 Fa</button>
+      </div>
+    </div>
+    <div id="vistaPanelLevelWrap" style="display:none">
+      <div class="vista-panel-label">Nivel</div>
+      <div class="level-selector" id="vLevelSelector">
+        <button class="level-btn active" id="vLvlOriginal"   onclick="switchLevel('original');  updateVistaLevel()">Original</button>
+        <button class="level-btn"        id="vLvlIntermediate" onclick="switchLevel('intermediate');updateVistaLevel()" disabled>Intermedio</button>
+        <button class="level-btn"        id="vLvlBasic"      onclick="switchLevel('basic');      updateVistaLevel()" disabled>Básico</button>
+        <button class="level-btn"        id="vLvlAccompaniment" onclick="switchLevel('accompaniment');updateVistaLevel()" disabled>Acomp.</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Backing track panel (desktop floating) ── -->
+<div class="backing-panel" id="backingPanel">
+  <div class="backing-panel-header">
+    <span class="backing-panel-title">🎵 Backing track</span>
+    <button class="backing-panel-close" onclick="toggleBackingPanel()">✕</button>
+  </div>
+  <div class="backing-panel-body">
+
+    <!-- Load file -->
+    <div class="bp-row">
+      <button class="bp-btn" id="bpLoadBtn" onclick="document.getElementById('backingFileInput').click()">
+        📂 Cargar audio…
+      </button>
+      <input id="backingFileInput" type="file" accept="audio/*" hidden onchange="loadBackingTrack(event)">
+      <span class="bp-file-name" id="backingFileName">Sin archivo</span>
+    </div>
+
+    <!-- Enable / Piano mute -->
+    <div class="bp-row" id="bpActiveRow" style="display:none">
+      <button class="bp-btn active" id="bpEnableBtn" onclick="toggleBackingEnabled()" title="Activar/desactivar backing">
+        🎵 Backing: ON
+      </button>
+      <button class="bp-btn" id="bpPianoMuteBtn" onclick="togglePianoMute()">
+        🎹 Piano: ON
+      </button>
+    </div>
+
+    <div class="bp-divider" id="bpDivider1" style="display:none"></div>
+
+    <!-- Volume -->
+    <div class="bp-row" id="bpVolRow" style="display:none">
+      <span class="bp-label">Volumen</span>
+      <input type="range" class="bp-range" id="backingVol" min="0" max="1" step="0.01" value="0.8"
+        oninput="setBackingVolume(this.value)">
+      <span class="bp-range-val" id="backingVolLabel">80%</span>
+    </div>
+
+    <!-- Offset -->
+    <div class="bp-row" id="bpOffsetRow" style="display:none">
+      <span class="bp-label">Inicio (s)</span>
+      <input type="number" class="bp-offset-input" id="backingOffset" value="0.00" min="0" step="0.01"
+        title="Segundos de intro en el backing antes de que entre el piano"
+        oninput="setBackingOffset(this.value)">
+      <button class="bp-btn" id="bpMarkBtn" onclick="markBackingEntry()" title="Captura el segundo actual del preview como punto de inicio" style="margin-left:4px">
+        🎯 Marcar entrada
+      </button>
+    </div>
+
+    <!-- Preview controls -->
+    <div class="bp-row" id="bpPreviewRow" style="display:none">
+      <span class="bp-label">Preview</span>
+      <button class="bp-btn" id="bpPreviewBtn" onclick="toggleBackingPreview()">▶ Escuchar</button>
+      <button class="bp-btn danger" onclick="clearBackingTrack()">✕ Quitar</button>
+    </div>
+
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -2308,6 +2583,24 @@ let currentMeasure = 1;
 let activeClef     = 'both';
 let isPlaying      = false;
 let audioCtx       = null;
+
+// ── Backing track state ───────────────────────────────
+let backingBuffer   = null;   // decoded AudioBuffer
+let backingBlob     = null;   // original File/Blob (for IndexedDB)
+let backingBlobName = '';     // original file name
+let backingSource   = null;   // active BufferSourceNode
+let backingPreviewSrc = null; // preview source node
+let backingGain     = null;   // GainNode
+let backingVolume   = 0.8;    // 0–1
+let backingOffsetSec = 0;     // seconds of intro before piano enters
+let measureStartBeats = [];   // cumulative beat-position for each measure (multiply by beatSec)
+let backingEnabled  = true;   // backing on/off (when file loaded)
+let backingPreviewing = false;
+let previewStartedAt = 0;  // AudioContext time when preview started
+let previewFromSec   = 0;  // offset at preview start
+let backingCtxStart  = 0;  // AudioContext.currentTime when backing last started
+let backingPosStart  = 0;  // backing audio position (sec) when it last started
+let pianoMuted      = false;  // mute piano notes
 let activeNodes    = [];
 let playTimers     = [];
 
@@ -2386,6 +2679,21 @@ buildPiano();
 // ════════════════════════════════════════════════════
 //  STEP COMPUTATION
 // ════════════════════════════════════════════════════
+function computeMeasureStartBeats() {
+  measureStartBeats = [0];
+  if (!songData) return;
+  for (let i = 0; i < songData.measures.length; i++) {
+    const steps = computeSteps(i);
+    const notes = steps.flatMap(s => s.notes);
+    let maxEnd = 4; // 4 beats default (4/4)
+    notes.forEach(n => {
+      const end = (n.beat || 0) + Math.max(0.05, n.duration || 0.5);
+      if (end > maxEnd) maxEnd = end;
+    });
+    measureStartBeats.push(measureStartBeats[i] + maxEnd);
+  }
+}
+
 function computeSteps(measureIdx) {
   if (!songData || measureIdx < 0 || measureIdx >= songData.measures.length) return [];
   const m   = songData.measures[measureIdx];
@@ -2652,10 +2960,10 @@ function toggleMode() {
   sequenceMode = !sequenceMode;
   const btn = document.getElementById('modeBtn');
   if (sequenceMode) {
-    btn.textContent = '📊 Todas las notas';
+    btn.innerHTML = '📊<span class="btn-label"> Todas las notas</span>';
     btn.classList.remove('overview');
   } else {
-    btn.textContent = '👣 Paso a paso';
+    btn.innerHTML = '👣<span class="btn-label"> Paso a paso</span>';
     btn.classList.add('overview');
   }
   updateStepNav();
@@ -2715,17 +3023,327 @@ function scrollToActive() {
   if (first) first.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 }
 
+
+// ════════════════════════════════════════════════════
+//  BACKING TRACK — IndexedDB persistence
+// ════════════════════════════════════════════════════
+const BACKING_DB   = 'pv_backings';
+const BACKING_STORE = 'tracks';
+const BACKING_DB_VER = 1;
+
+function openBackingDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(BACKING_DB, BACKING_DB_VER);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(BACKING_STORE);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+async function persistBackingToDB() {
+  if (!songData) return;
+  try {
+    const db  = await openBackingDB();
+    const key = songData.title;
+    if (!backingBuffer) {
+      // No backing — delete any stored entry
+      const tx = db.transaction(BACKING_STORE, 'readwrite');
+      tx.objectStore(BACKING_STORE).delete(key);
+      return;
+    }
+    // Store blob + offset (we need the original blob, saved in backingBlob)
+    if (!backingBlob) return;
+    const tx  = db.transaction(BACKING_STORE, 'readwrite');
+    tx.objectStore(BACKING_STORE).put({
+      blob:      backingBlob,
+      name:      backingBlobName,
+      offsetSec: backingOffsetSec,
+      enabled:   backingEnabled
+    }, key);
+  } catch(e) { console.warn('Backing DB save error:', e); }
+}
+
+async function loadBackingFromDB(songTitle) {
+  try {
+    const db  = await openBackingDB();
+    const tx  = db.transaction(BACKING_STORE, 'readonly');
+    return new Promise((res, rej) => {
+      const req = tx.objectStore(BACKING_STORE).get(songTitle);
+      req.onsuccess = e => res(e.target.result || null);
+      req.onerror   = e => rej(e.target.error);
+    });
+  } catch(e) { return null; }
+}
+
+async function restoreBackingForSong(songTitle) {
+  const rec = await loadBackingFromDB(songTitle);
+  if (!rec || !rec.blob) {
+    clearBackingTrack(false); // clear UI, no DB write
+    return;
+  }
+  // Decode blob
+  const ctx = getCtx();
+  if (ctx.state === 'suspended') await ctx.resume();
+  try {
+    const ab  = await rec.blob.arrayBuffer();
+    backingBuffer   = await ctx.decodeAudioData(ab);
+    backingBlob     = rec.blob;
+    backingBlobName = rec.name || 'backing';
+    backingOffsetSec = rec.offsetSec || 0;
+    backingEnabled   = rec.enabled !== false;
+    ['backingFileName','mobBackingFileName'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = backingBlobName; el.dataset.name = backingBlobName; }
+    });
+    syncBackingUI();
+  } catch(e) { console.warn('Backing restore decode error:', e); }
+}
+
+// ════════════════════════════════════════════════════
+//  BACKING TRACK
+// ════════════════════════════════════════════════════
+async function loadBackingTrack(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  event.target.value = '';
+  const ctx = getCtx();
+  if (ctx.state === 'suspended') await ctx.resume();
+  try {
+    const arrayBuf = await file.arrayBuffer();
+    backingBuffer   = await ctx.decodeAudioData(arrayBuf);
+    backingBlob     = file;
+    backingBlobName = file.name;
+    backingEnabled  = true;
+    ['backingFileName','mobBackingFileName'].forEach(id => {
+      const el = document.getElementById(id); if (el) { el.textContent = file.name; el.dataset.name = file.name; }
+    });
+    syncBackingUI();
+    persistBackingToDB();
+    showToast('🎵 Backing cargado — ajusta el offset si la canción tiene intro');
+  } catch(e) {
+    showToast('No se pudo decodificar el audio: ' + e.message, true);
+  }
+}
+
+function clearBackingTrack() {
+  stopBackingSource();
+  stopBackingPreview();
+  stopBackingPreview();
+  backingBuffer    = null;
+  backingEnabled   = true;
+  backingOffsetSec = 0;
+  syncBackingUI();
+}
+
+function stopBackingSource() {
+  if (backingSource) {
+    try { backingSource.stop(); } catch(_) {}
+    backingSource.disconnect();
+    backingSource = null;
+  }
+}
+
+function stopBackingPreview() {
+  if (backingPreviewSrc) {
+    try { backingPreviewSrc.stop(); } catch(_) {}
+    backingPreviewSrc.disconnect();
+    backingPreviewSrc = null;
+  }
+  backingPreviewing = false;
+  const btn = document.getElementById('bpPreviewBtn');
+  if (btn) btn.textContent = '▶ Escuchar';
+}
+
+function toggleBackingPreview() {
+  if (backingPreviewing) { stopBackingPreview(); return; }
+  if (!backingBuffer) return;
+  const ctx = getCtx();
+  if (!backingGain) {
+    backingGain = ctx.createGain();
+    backingGain.gain.value = backingVolume;
+    backingGain.connect(ctx.destination);
+  }
+  backingPreviewSrc = ctx.createBufferSource();
+  backingPreviewSrc.buffer = backingBuffer;
+  backingPreviewSrc.connect(backingGain);
+  // Always preview from second 0 — user marks entry point during playback
+  const from = 0;
+  backingPreviewSrc.start(ctx.currentTime, from);
+  previewStartedAt = ctx.currentTime;
+  previewFromSec   = 0;
+  backingPreviewSrc.onended = () => { backingPreviewing = false; backingPreviewSrc = null; const b = document.getElementById('bpPreviewBtn'); if(b) b.textContent = '▶ Escuchar'; };
+  backingPreviewing = true;
+  const btn = document.getElementById('bpPreviewBtn');
+  if (btn) btn.textContent = '■ Detener';
+}
+
+function startBackingAt(offsetSec, atAudioTime) {
+  if (!backingBuffer || !backingEnabled) return;
+  stopBackingSource();
+  stopBackingPreview();
+  const ctx = getCtx();
+  if (!backingGain) {
+    backingGain = ctx.createGain();
+    backingGain.gain.value = backingVolume;
+    backingGain.connect(ctx.destination);
+  }
+  backingSource = ctx.createBufferSource();
+  backingSource.buffer = backingBuffer;
+  backingSource.connect(backingGain);
+  const from = Math.max(0, Math.min(offsetSec, backingBuffer.duration - 0.01));
+  backingSource.start(atAudioTime, from);
+  backingCtxStart = atAudioTime;   // when (in ctx time) backing starts
+  backingPosStart = from;          // where (in audio) backing starts
+  backingSource.onended = () => { backingSource = null; };
+}
+
+function setBackingVolume(val) {
+  backingVolume = parseFloat(val);
+  if (backingGain) backingGain.gain.value = backingVolume;
+  syncBackingUI();
+}
+
+function setBackingOffset(val) {
+  backingOffsetSec = Math.max(0, parseFloat(val) || 0);
+  syncBackingUI();
+  persistBackingToDB();
+}
+
+function toggleBackingEnabled() {
+  backingEnabled = !backingEnabled;
+  syncBackingUI();
+  persistBackingToDB();
+}
+
+function togglePianoMute() {
+  pianoMuted = !pianoMuted;
+  syncBackingUI();
+}
+
+function toggleBackingPanel() {
+  const panel = document.getElementById('backingPanel');
+  const btn   = document.getElementById('backingIconBtn');
+  if (!panel) return;
+  const isOpen = panel.classList.toggle('open');
+  if (btn) btn.classList.toggle('active', isOpen);
+}
+
+function markBackingEntry() {
+  if (!backingPreviewing || !backingBuffer) {
+    showToast('Primero inicia el preview con ▶ Escuchar', true);
+    return;
+  }
+  const ctx = getCtx();
+  const elapsed = ctx.currentTime - previewStartedAt;
+  const captured = Math.max(0, previewFromSec + elapsed);
+  backingOffsetSec = Math.round(captured * 100) / 100; // 2 decimals
+  syncBackingUI();
+  syncBackingUI();
+  persistBackingToDB();
+  showToast('🎯 Entrada marcada en ' + backingOffsetSec.toFixed(2) + 's');
+}
+
+function toggleVistaPanel() {
+  const panel = document.getElementById('vistaPanel');
+  const btn   = document.getElementById('vistaMenuBtn');
+  if (!panel) return;
+  const isOpen = panel.classList.toggle('open');
+  if (btn) btn.classList.toggle('active', isOpen);
+  if (isOpen) syncVistaPanel();
+}
+
+function syncVistaPanel() {
+  // Sync clef buttons
+  ['both','treble','bass'].forEach(c => {
+    const cap = c[0].toUpperCase() + c.slice(1);
+    document.getElementById('vBtn' + cap)?.classList.toggle('active', c === activeClef);
+  });
+  // Show level wrap if song has levels
+  const hasLevels = document.getElementById('levelSelector')?.style.display !== 'none';
+  const wrap = document.getElementById('vistaPanelLevelWrap');
+  if (wrap) wrap.style.display = hasLevels ? '' : 'none';
+  // Sync level buttons
+  ['Original','Intermediate','Basic','Accompaniment'].forEach(l => {
+    const mainBtn = document.getElementById('lvl' + l);
+    const vBtn    = document.getElementById('vLvl' + l);
+    if (mainBtn && vBtn) {
+      vBtn.classList.toggle('active', mainBtn.classList.contains('active'));
+      vBtn.disabled = mainBtn.disabled;
+    }
+  });
+}
+
+function updateVistaClef() { syncVistaPanel(); }
+function updateVistaLevel() { syncVistaPanel(); }
+
+function syncBackingUI() {
+  const hasFile = !!backingBuffer;
+  // Desktop panel
+  const rows = ['bpActiveRow','bpVolRow','bpOffsetRow','bpPreviewRow','bpDivider1'];
+  rows.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = hasFile ? '' : 'none'; });
+
+  const nameEl  = document.getElementById('backingFileName');
+  if (nameEl) nameEl.textContent = hasFile ? (nameEl.dataset.name || '—') : 'Sin archivo';
+
+  const enBtn = document.getElementById('bpEnableBtn');
+  if (enBtn) {
+    enBtn.textContent = backingEnabled ? '🎵 Backing: ON' : '🔇 Backing: OFF';
+    enBtn.classList.toggle('active', backingEnabled);
+  }
+  const pmBtn = document.getElementById('bpPianoMuteBtn');
+  if (pmBtn) {
+    pmBtn.textContent = pianoMuted ? '🔇 Piano: OFF' : '🎹 Piano: ON';
+    pmBtn.classList.toggle('muted', pianoMuted);
+  }
+  const volEl = document.getElementById('backingVol');
+  if (volEl) volEl.value = backingVolume;
+  const volLbl = document.getElementById('backingVolLabel');
+  if (volLbl) volLbl.textContent = Math.round(backingVolume * 100) + '%';
+  const offEl = document.getElementById('backingOffset');
+  if (offEl) offEl.value = backingOffsetSec.toFixed(2);
+
+  // Mobile panel
+  const mobRows = ['mobBpActiveRow','mobBpVolRow','mobBpOffsetRow'];
+  mobRows.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = hasFile ? '' : 'none'; });
+  const mobName = document.getElementById('mobBackingFileName');
+  if (mobName) mobName.textContent = hasFile ? (mobName.dataset.name || '—') : 'Sin archivo';
+  const mobEnBtn = document.getElementById('mobBpEnableBtn');
+  if (mobEnBtn) {
+    mobEnBtn.textContent = backingEnabled ? '🎵 ON' : '🔇 OFF';
+    mobEnBtn.classList.toggle('active', backingEnabled);
+  }
+  const mobPmBtn = document.getElementById('mobBpPianoBtn');
+  if (mobPmBtn) {
+    mobPmBtn.textContent = pianoMuted ? '🔇 Piano: OFF' : '🎹 Piano: ON';
+    mobPmBtn.classList.toggle('muted', pianoMuted);
+  }
+  const mobVol = document.getElementById('mobBackingVol');
+  if (mobVol) mobVol.value = backingVolume;
+  const mobVolLbl = document.getElementById('mobBackingVolLabel');
+  if (mobVolLbl) mobVolLbl.textContent = Math.round(backingVolume * 100) + '%';
+  const mobOff = document.getElementById('mobBackingOffset');
+  if (mobOff) mobOff.value = backingOffsetSec.toFixed(2);
+}
+
+
+
 // ════════════════════════════════════════════════════
 //  AUDIO  (Web Audio API)
 // ════════════════════════════════════════════════════
 function getCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!backingGain) {
+    backingGain = audioCtx.createGain();
+    backingGain.gain.value = backingVolume;
+    backingGain.connect(audioCtx.destination);
+  }
   return audioCtx;
 }
 
 function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 
 function playNote(midi, startOffset, durSec) {
+  if (pianoMuted) return;
   const ctx = getCtx();
 
   // ── Sample path (MIDI.js soundfonts decodificados) ─
@@ -2835,7 +3453,13 @@ async function togglePlay() {
     isPlaying   = true;
     document.getElementById('playBtn').innerHTML = '⏸';
     document.getElementById('playBtn').classList.add('playing');
-      scheduleMeasure();
+    // Resume backing from where it was paused
+    if (backingBuffer && backingEnabled && backingPosStart < backingBuffer.duration) {
+      startBackingAt(backingPosStart, getCtx().currentTime + 0.05);
+    }
+    const _fromBeat = pausedBeatInMeasure;
+    pausedBeatInMeasure = 0;
+    scheduleMeasure(_fromBeat);
     return;
   }
 
@@ -2863,14 +3487,45 @@ async function togglePlay() {
   playTimers.forEach(t => clearTimeout(t));
   playTimers = [];
 
+  // Backing track sync:
+  // backingOffsetSec = seconds in audio where measure 1 starts (after intro).
+  // For measure N: audio position = backingOffsetSec + beatsToMeasureN * beatSec.
+  // If starting from measure 1 with an intro, play from 0 and delay piano.
+  if (backingBuffer && backingEnabled) {
+    const ctx    = getCtx();
+    const bpm    = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
+    const beatSec = 60 / bpm;
+    const startMeasure0 = playStartMeasure - 1; // 0-based
+    const beatsToStart  = measureStartBeats[startMeasure0] || 0;
+    const measureOffset = beatsToStart * beatSec;
+    const audioPos      = backingOffsetSec + measureOffset;
+
+    if (startMeasure0 === 0 && backingOffsetSec > 0) {
+      // Measure 1 + intro exists: play from 0, delay piano
+      startBackingAt(0, ctx.currentTime + 0.05);
+      playTimers.push(setTimeout(() => {
+        if (isPlaying) scheduleMeasure();
+      }, backingOffsetSec * 1000));
+      return;
+    } else {
+      // Any other measure (or no intro): seek backing to exact position
+      startBackingAt(audioPos, ctx.currentTime + 0.05);
+    }
+  }
+
   scheduleMeasure();
 }
 
-function scheduleMeasure() {
+function scheduleMeasure(fromBeat = 0) {
   if (!isPlaying) return;
 
   const bpm     = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
   const beatSec = 60 / bpm;
+  const fromSec = fromBeat * beatSec;
+
+  // Record wall-clock time of this measure's virtual start
+  // (if resuming mid-measure, backdate so future pauses calc correctly)
+  measureStartWallTime = Date.now() - fromSec * 1000;
 
   // Update UI to current play measure
   currentMeasure = playCurrentMeasure;
@@ -2883,34 +3538,45 @@ function scheduleMeasure() {
   renderSequencePanel();
 
   if (sequenceMode && measureSteps.length) {
-    currentStep = 0;
-    highlightNotes(measureSteps[0].notes);
-    updateNotePanelFromNotes(measureSteps[0].notes);
+    // Find the last step at-or-before fromBeat to show immediately
+    let startIdx = 0;
+    for (let i = 0; i < measureSteps.length; i++) {
+      if ((measureSteps[i].beat || 0) <= fromBeat + 0.001) startIdx = i;
+      else break;
+    }
+    currentStep = startIdx;
+    highlightNotes(measureSteps[startIdx].notes);
+    updateNotePanelFromNotes(measureSteps[startIdx].notes);
     updateStepNav();
-    updateSequenceActive(0);
-    updateNotationNotes(measureSteps[0]); // fix: first note of each measure was never highlighted in SVG
+    updateSequenceActive(startIdx);
+    updateNotationNotes(measureSteps[startIdx]);
   } else if (!sequenceMode) {
     const all = measureSteps.flatMap(s => s.notes);
     highlightNotes(all);
     updateNotePanel(songData.measures[currentMeasure - 1]);
   }
 
-  // Gather notes & schedule audio
+  // Gather notes & schedule audio — skip notes already past, offset timing
   const allSteps = computeSteps(currentMeasure - 1);
   const allNotes = allSteps.flatMap(s => s.notes);
   let maxEnd = beatSec * 4; // fallback for silent measures
 
   allNotes.forEach(n => {
-    const start = (n.beat || 0) * beatSec;
+    const noteBeat = n.beat || 0;
+    const noteEndSec = noteBeat * beatSec + Math.max(0.08, (n.duration || 0.5) * beatSec);
+    maxEnd = Math.max(maxEnd, noteEndSec); // always track full measure end
+    if (noteBeat < fromBeat - 0.01) return; // already played — skip
+    const start = (noteBeat - fromBeat) * beatSec; // delay relative to now
     const dur   = Math.max(0.08, (n.duration || 0.5) * beatSec);
     playNote(n.midi, start, dur);
-    maxEnd = Math.max(maxEnd, start + dur);
   });
 
-  // Visual step advances for this measure
+  // Visual step advances — skip steps already shown, offset remaining
   if (sequenceMode) {
     allSteps.forEach((step, i) => {
-      if (i === 0) return; // already shown above
+      const stepBeat = step.beat || 0;
+      if (stepBeat <= fromBeat + 0.001) return; // already shown or at/before resume point
+      const delay = (stepBeat - fromBeat) * beatSec * 1000;
       const t = setTimeout(() => {
         if (!isPlaying || currentMeasure !== playCurrentMeasure) return;
         currentStep = i;
@@ -2920,13 +3586,13 @@ function scheduleMeasure() {
         updateSequenceActive(i);
         updateNotationNotes(step);
         scrollToActive();
-      }, Math.round(step.beat * beatSec * 1000));
+      }, Math.round(delay));
       playTimers.push(t);
     });
   }
 
-  // Schedule advance to next measure (or loop / stop)
-  const advanceMs = Math.round(maxEnd * 1000);
+  // Schedule advance to next measure — remaining time from fromBeat
+  const remainingMs = Math.max(0, Math.round((maxEnd - fromSec) * 1000));
   const t = setTimeout(() => {
     if (!isPlaying) return;
     const next = playCurrentMeasure + 1;
@@ -2941,7 +3607,7 @@ function scheduleMeasure() {
       playCurrentMeasure = next;
       scheduleMeasure();
     }
-  }, advanceMs);
+  }, remainingMs);
   playTimers.push(t);
 }
 
@@ -2965,6 +3631,7 @@ function stopPlay(resetToStart = false) {
   playTimers = [];
   activeNodes.forEach(n => { try { n.stop(); } catch(e){} });
   activeNodes = [];
+  stopBackingSource();
   // ── Reset to configured start measure ────────────────
   if (resetToStart) {
     goToMeasure(savedStartMeasure);
@@ -2998,7 +3665,7 @@ function startFollowPlay() {
   if (!sequenceMode) {
     sequenceMode = true;
     const btn = document.getElementById('modeBtn');
-    if (btn) btn.textContent = '📊 Todas las notas';
+    if (btn) btn.innerHTML = '📊<span class="btn-label"> Todas las notas</span>';
   }
 
   followPaused = false;
@@ -3237,6 +3904,7 @@ function loadFile(file) {
 function onLoaded(data, filename, options = {}) {
   songData = data;
   currentMeasure = 1;
+  computeMeasureStartBeats();
 
   document.getElementById('emptyState').style.display = 'none';
   document.getElementById('pianoSection').style.display = 'flex';
@@ -3275,14 +3943,18 @@ function onLoaded(data, filename, options = {}) {
   updateLevelSelector(knownLevels);
 
   // Toast
-  const levelLabel = currentLevel === 'simplified' ? ' (Intermedio)' :
-                     currentLevel === 'basic'       ? ' (Básico)'   : '';
+  const levelLabel = currentLevel === 'intermediate'   ? ' (Intermedio)'     :
+                     currentLevel === 'basic'          ? ' (Básico)'         :
+                     currentLevel === 'accompaniment'  ? ' (Acompañamiento)' : '';
   showToast(restored
     ? `✓ "${data.title}"${levelLabel} — retomando desde el compás ${currentMeasure}`
     : `✓ "${data.title}"${levelLabel} cargada — ${data.measures.length} compases`
   );
 
   // Save to recent songs & refresh list (skip if coming from level switch / recent load)
+  // Restore backing track for this song from IndexedDB
+  restoreBackingForSong(data.title).catch(() => {});
+
   if (!options.skipDB) {
     saveSongToDB().then(async () => {
       await renderRecentSongs();
@@ -3326,10 +3998,11 @@ function onLoaded(data, filename, options = {}) {
 
 // ── Level selector update ─────────────────────────────
 function updateLevelSelector(levels) {
-  // levels: object with keys 'original'/'simplified'/'basic', or null (single file)
+  // levels: object with keys 'original'/'intermediate'/'basic'/'accompaniment', or null (single file)
   const sel = document.getElementById('levelSelector');
   const btnO = document.getElementById('lvlOriginal');
-  const btnS = document.getElementById('lvlSimplified');
+  const btnS = document.getElementById('lvlIntermediate');
+  const btnA = document.getElementById('lvlAccompaniment');
   const btnB = document.getElementById('lvlBasic');
 
   // If no multi-level info yet, try to derive from IDB lazily
@@ -3340,11 +4013,12 @@ function updateLevelSelector(levels) {
   }
 
   const hasOrig = !!levels.original;
-  const hasSimp = !!levels.simplified;
+  const hasSimp = !!levels.intermediate;
+  const hasAccomp = !!levels.accompaniment;
   const hasBas  = !!levels.basic;
 
   // Show selector only if at least one non-original level exists
-  if (!hasSimp && !hasBas) {
+  if (!hasSimp && !hasBas && !hasAccomp) {
     sel.style.display = 'none';
     return;
   }
@@ -3353,11 +4027,13 @@ function updateLevelSelector(levels) {
   btnO.disabled = !hasOrig;
   btnS.disabled = !hasSimp;
   btnB.disabled = !hasBas;
+  if (btnA) btnA.disabled = !hasAccomp;
 
   // Active state
-  [btnO, btnS, btnB].forEach(b => b.classList.remove('active'));
+  [btnO, btnS, btnB, btnA].filter(Boolean).forEach(b => b.classList.remove('active'));
   if (currentLevel === 'original')   btnO.classList.add('active');
-  if (currentLevel === 'simplified') btnS.classList.add('active');
+  if (currentLevel === 'intermediate')   btnS.classList.add('active');
+  if (currentLevel === 'accompaniment')  btnA && btnA.classList.add('active');
   if (currentLevel === 'basic')      btnB.classList.add('active');
 
   // Store levels on selector element for switchLevel to access
@@ -3411,6 +4087,8 @@ let followPlaying = false;  // flag: active follow-play session (Play pressed wi
 let followStart   = 1;      // first measure of follow session
 let followPaused  = false;  // paused mid-session (position saved)
 let audioPaused   = false;  // audio playback paused
+let measureStartWallTime = 0;   // Date.now() (ms) when current measure audio scheduling began
+let pausedBeatInMeasure  = 0;   // beat offset within measure where we paused
 let pausedMeasure = 1;      // measure saved at pause
 let pausedStep    = 0;      // step saved at pause
 let followEnd     = 1;      // last measure of follow session
@@ -3576,6 +4254,19 @@ function pausePlay() {
   // Works for both audio and follow mode
   if (followPlaying) { pauseFollowPlay(); return; }
   if (!isPlaying) return;
+  // Snapshot backing position before stopping
+  if (backingSource && backingBuffer) {
+    const ctx = getCtx();
+    const elapsed = Math.max(0, ctx.currentTime - backingCtxStart);
+    backingPosStart = backingPosStart + elapsed; // position in audio file right now
+  }
+  // Snapshot beat position within current measure
+  {
+    const _bpm = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
+    const _beatSec = 60 / _bpm;
+    const _elapsedSec = Math.max(0, (Date.now() - measureStartWallTime) / 1000);
+    pausedBeatInMeasure = _elapsedSec / _beatSec;
+  }
   // Audio pause: stop timers, save position (playCurrentMeasure already set)
   audioPaused = true;
   isPlaying   = false;
@@ -3583,9 +4274,9 @@ function pausePlay() {
   playTimers = [];
   activeNodes.forEach(n => { try { n.stop(); } catch(e){} });
   activeNodes = [];
+  stopBackingSource();
   document.getElementById('playBtn').innerHTML = '▶';
   document.getElementById('playBtn').classList.remove('playing');
-
 }
 
 function pauseFollowPlay() {
@@ -3994,13 +4685,14 @@ const MAX_RECENT  = 10;
 let   idb         = null;
 let   rawFileContent = null; // string (XML) or ArrayBuffer (MIDI)
 let   rawFileName    = '';
-let   currentLevel   = 'original'; // 'original' | 'simplified' | 'basic'
+let   currentLevel   = 'original'; // 'original' | 'intermediate' | 'basic' | 'accompaniment'
 
 // ── Level helpers ─────────────────────────────────────
 function detectLevel(filename) {
   const base = filename.replace(/\.[^.]+$/, ''); // strip extension
   if (base.endsWith('-b')) return 'basic';
-  if (base.endsWith('-s')) return 'simplified';
+  if (base.endsWith('-i')) return 'intermediate';
+  if (base.endsWith('-a')) return 'accompaniment';
   return 'original';
 }
 
@@ -4012,7 +4704,7 @@ function songBaseId(filename, title) {
   }
   // Fallback: filename-based, stripping the level suffix (-s / -b)
   let base = filename.replace(/\.[^.]+$/, ''); // strip extension
-  if (base.endsWith('-b') || base.endsWith('-s')) base = base.slice(0, -2);
+  if (base.endsWith('-b') || base.endsWith('-i') || base.endsWith('-a')) base = base.slice(0, -2);
   return 'song_' + base.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 60);
 }
 
@@ -4245,7 +4937,8 @@ async function renderRecentSongs() {
     const levels = rec.levels || (rec.content ? { original: true } : {});
     const badges = [];
     if (levels.original)   badges.push(`<span class="level-badge orig">Original</span>`);
-    if (levels.simplified) badges.push(`<span class="level-badge simp">Intermedio</span>`);
+    if (levels.intermediate)   badges.push(`<span class="level-badge simp">Intermedio</span>`);
+    if (levels.accompaniment) badges.push(`<span class="level-badge acmp">Acomp.</span>`);
     if (levels.basic)      badges.push(`<span class="level-badge basic">Básico</span>`);
 
     card.innerHTML = `
@@ -4272,7 +4965,7 @@ function loadFromRecent(rec, preferLevel) {
   try {
     // Support both old flat schema and new levels schema
     const levels = rec.levels || (rec.content ? { original: { content: rec.content, filename: rec.filename || '' } } : {});
-    const orderedLevels = ['original', 'simplified', 'basic'];
+    const orderedLevels = ['original', 'intermediate', 'basic', 'accompaniment'];
     const targetLevel = preferLevel || orderedLevels.find(l => levels[l]) || 'original';
     const levelData   = levels[targetLevel];
     if (!levelData) { showToast('Nivel no disponible', true); return; }
@@ -4900,7 +5593,7 @@ function syncMobLevelSelector() {
   mobSec.style.display = visible ? '' : 'none';
   if (!visible) return;
 
-  [['Original','original'],['Simplified','simplified'],['Basic','basic']].forEach(([cap, l]) => {
+  [['Original','original'],['Intermediate','intermediate'],['Basic','basic'],['Accompaniment','accompaniment']].forEach(([cap, l]) => {
     const mainBtn = document.getElementById('lvl' + cap);
     const mobBtn  = document.getElementById('mLvl' + cap);
     if (mainBtn && mobBtn) {
