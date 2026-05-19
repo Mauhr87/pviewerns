@@ -939,10 +939,11 @@ body {
   opacity: 0;
   transform: translateY(8px);
   transition: all 0.2s;
-  z-index: 100;
+  z-index: 10000;
   max-width: 320px;
+  pointer-events: none;
 }
-.toast.show { opacity: 1; transform: translateY(0); }
+.toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .toast.error   { background: #7f1d1d; }
 .toast.success { background: #064e3b; border: 1px solid #10b981; font-weight: 600; }
 
@@ -2593,6 +2594,7 @@ let backingPreviewSrc = null; // preview source node
 let backingGain     = null;   // GainNode
 let backingVolume   = 0.8;    // 0–1
 let backingOffsetSec = 0;     // seconds of intro before piano enters
+let backingOriginalBpm = 0;   // BPM when backing was loaded (0 = not set)
 let measureStartBeats = [];   // cumulative beat-position for each measure (multiply by beatSec)
 let backingEnabled  = true;   // backing on/off (when file loaded)
 let backingPreviewing = false;
@@ -3058,7 +3060,8 @@ async function persistBackingToDB() {
       blob:      backingBlob,
       name:      backingBlobName,
       offsetSec: backingOffsetSec,
-      enabled:   backingEnabled
+      enabled:   backingEnabled,
+      bpm:       Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120))
     }, key);
   } catch(e) { console.warn('Backing DB save error:', e); }
 }
@@ -3089,8 +3092,9 @@ async function restoreBackingForSong(songTitle) {
     backingBuffer   = await ctx.decodeAudioData(ab);
     backingBlob     = rec.blob;
     backingBlobName = rec.name || 'backing';
-    backingOffsetSec = rec.offsetSec || 0;
-    backingEnabled   = rec.enabled !== false;
+    backingOffsetSec   = rec.offsetSec || 0;
+    backingEnabled     = rec.enabled !== false;
+    backingOriginalBpm = rec.bpm || 0;
     ['backingFileName','mobBackingFileName'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.textContent = backingBlobName; el.dataset.name = backingBlobName; }
@@ -3106,14 +3110,25 @@ async function loadBackingTrack(event) {
   const file = event.target.files?.[0];
   if (!file) return;
   event.target.value = '';
+
+  // Block load if BPM was changed from song's original
+  if (songData && songData.origBpm) {
+    const cur = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
+    if (cur !== songData.origBpm) {
+      showToast('⚠️ Restablece el tempo a ' + songData.origBpm + ' BPM antes de cargar el backing track', true);
+      return;
+    }
+  }
+
   const ctx = getCtx();
   if (ctx.state === 'suspended') await ctx.resume();
   try {
     const arrayBuf = await file.arrayBuffer();
-    backingBuffer   = await ctx.decodeAudioData(arrayBuf);
-    backingBlob     = file;
-    backingBlobName = file.name;
-    backingEnabled  = true;
+    backingBuffer      = await ctx.decodeAudioData(arrayBuf);
+    backingBlob        = file;
+    backingBlobName    = file.name;
+    backingEnabled     = true;
+    backingOriginalBpm = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
     ['backingFileName','mobBackingFileName'].forEach(id => {
       const el = document.getElementById(id); if (el) { el.textContent = file.name; el.dataset.name = file.name; }
     });
@@ -3210,10 +3225,39 @@ function setBackingOffset(val) {
   persistBackingToDB();
 }
 
+// Returns true if BPM is wrong and backing should be blocked
+function backingBpmMismatch() {
+  if (!backingBuffer || backingOriginalBpm <= 0) return false;
+  const cur = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
+  return cur !== backingOriginalBpm;
+}
+
+function forceDisableBacking() {
+  if (!backingBuffer || !backingEnabled) return;
+  backingEnabled = false;
+  syncBackingUI();
+  persistBackingToDB();
+  showToast('⚠️ Backing desactivado — tempo cambiado. Original: ' + backingOriginalBpm + ' BPM', true);
+}
+
 function toggleBackingEnabled() {
+  if (!backingEnabled) {
+    // Trying to turn ON — check BPM first
+    if (backingBpmMismatch()) {
+      showToast('⚠️ Para activar el backing track restablece el tempo a ' + backingOriginalBpm + ' BPM', true);
+      return;
+    }
+  }
   backingEnabled = !backingEnabled;
   syncBackingUI();
   persistBackingToDB();
+}
+
+function checkBackingBpm() {
+  if (!backingBuffer) return;
+  const cur = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
+  if (backingOriginalBpm <= 0) { backingOriginalBpm = cur; return; }
+  if (cur !== backingOriginalBpm && backingEnabled) forceDisableBacking();
 }
 
 function togglePianoMute() {
@@ -3288,8 +3332,10 @@ function syncBackingUI() {
 
   const enBtn = document.getElementById('bpEnableBtn');
   if (enBtn) {
-    enBtn.textContent = backingEnabled ? '🎵 Backing: ON' : '🔇 Backing: OFF';
-    enBtn.classList.toggle('active', backingEnabled);
+    const locked = backingBpmMismatch();
+    enBtn.textContent = locked ? '🔒 Backing: bloqueado' : (backingEnabled ? '🎵 Backing: ON' : '🔇 Backing: OFF');
+    enBtn.classList.toggle('active', backingEnabled && !locked);
+    enBtn.style.opacity = locked ? '0.6' : '';
   }
   const pmBtn = document.getElementById('bpPianoMuteBtn');
   if (pmBtn) {
@@ -3310,8 +3356,10 @@ function syncBackingUI() {
   if (mobName) mobName.textContent = hasFile ? (mobName.dataset.name || '—') : 'Sin archivo';
   const mobEnBtn = document.getElementById('mobBpEnableBtn');
   if (mobEnBtn) {
-    mobEnBtn.textContent = backingEnabled ? '🎵 ON' : '🔇 OFF';
-    mobEnBtn.classList.toggle('active', backingEnabled);
+    const locked = backingBpmMismatch();
+    mobEnBtn.textContent = locked ? '🔒' : (backingEnabled ? '🎵 ON' : '🔇 OFF');
+    mobEnBtn.classList.toggle('active', backingEnabled && !locked);
+    mobEnBtn.style.opacity = locked ? '0.6' : '';
   }
   const mobPmBtn = document.getElementById('mobBpPianoBtn');
   if (mobPmBtn) {
@@ -3448,6 +3496,14 @@ function startBackingForMeasure(measureNum) {
   if (!backingBuffer || !backingEnabled) return false;
   const ctx     = getCtx();
   const bpm     = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
+  // BPM lock: if tempo changed from when backing was loaded, disable and warn
+  if (backingOriginalBpm > 0 && bpm !== backingOriginalBpm) {
+    backingEnabled = false;
+    syncBackingUI();
+    persistBackingToDB();
+    showToast('⚠️ Backing desactivado — restablece el tempo a ' + backingOriginalBpm + ' BPM para usarlo', true);
+    return false;
+  }
   const beatSec = 60 / bpm;
   const m0      = measureNum - 1;   // 0-based
   const beats   = measureStartBeats[m0] || 0;
@@ -5037,7 +5093,7 @@ function saveState() {
     localStorage.setItem(stateKey(songData.title), JSON.stringify({
       measure:      currentMeasure,
       clef:         activeClef,
-      tempo:        parseInt(document.getElementById('tempoInput').value) || 120,
+      // tempo intentionally NOT saved — always restored from song's origBpm
       sequenceMode: sequenceMode,
       loop:         loopEnabled,
       rangeEnd:     document.getElementById('measureEnd').value || ''
@@ -5064,9 +5120,7 @@ function restoreState(title) {
           .classList.toggle('active', x === s.clef)
       );
     }
-    // Tempo
-    if (s.tempo >= 20 && s.tempo <= 400)
-      document.getElementById('tempoInput').value = s.tempo;
+    // Tempo: NOT restored from state — always set from song's origBpm on load
 
     // Sequence mode
     if (typeof s.sequenceMode === 'boolean' && s.sequenceMode !== sequenceMode) {
@@ -5624,6 +5678,16 @@ function syncMobLevelSelector() {
 // ════════════════════════════════════════════════════
 //  TOAST
 // ════════════════════════════════════════════════════
+// ── Tempo input event listeners (fire on every keystroke/spinner) ────────────
+document.addEventListener('DOMContentLoaded', function() {
+  ['tempoInput', 'tempoInputMob'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input',  function() { checkBackingBpm(); syncBackingUI(); });
+    el.addEventListener('change', function() { checkBackingBpm(); syncBackingUI(); });
+  });
+});
+
 let toastTimer;
 function showToast(msg, isError=false, type='') {
   const t = document.getElementById('toast');
