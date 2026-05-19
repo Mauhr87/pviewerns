@@ -2350,8 +2350,8 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
       <div class="level-selector" id="mobLevelSelector">
         <button class="level-btn active"  id="mLvlOriginal"   onclick="switchLevel('original');closeMobExtras()">Original</button>
         <button class="level-btn" id="mLvlIntermediate" onclick="switchLevel('intermediate');closeMobExtras()" disabled>Intermedio</button>
-        <button class="level-btn" id="mLvlBasic"      onclick="switchLevel('basic');closeMobExtras()"      disabled>Básico</button>
         <button class="level-btn" id="mLvlAccompaniment" onclick="switchLevel('accompaniment');closeMobExtras()" disabled>Acomp.</button>
+        <button class="level-btn" id="mLvlBasic"      onclick="switchLevel('basic');closeMobExtras()"      disabled>Básico</button>
       </div>
     </div>
   </div>
@@ -2410,8 +2410,8 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
     <div class="level-selector" id="levelSelector" style="display:none">
       <button class="level-btn active" id="lvlOriginal" onclick="switchLevel('original')" title="Versión original">Original</button>
       <button class="level-btn" id="lvlIntermediate" onclick="switchLevel('intermediate')" disabled title="Versión intermedia">Intermedio</button>
-      <button class="level-btn" id="lvlBasic" onclick="switchLevel('basic')" disabled title="Versión básica">Básico</button>
       <button class="level-btn" id="lvlAccompaniment" onclick="switchLevel('accompaniment')" disabled title="Acompañamiento">Acomp.</button>
+      <button class="level-btn" id="lvlBasic" onclick="switchLevel('basic')" disabled title="Versión básica">Básico</button>
     </div>
   </div>
 
@@ -2496,8 +2496,8 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
       <div class="level-selector" id="vLevelSelector">
         <button class="level-btn active" id="vLvlOriginal"   onclick="switchLevel('original');  updateVistaLevel()">Original</button>
         <button class="level-btn"        id="vLvlIntermediate" onclick="switchLevel('intermediate');updateVistaLevel()" disabled>Intermedio</button>
-        <button class="level-btn"        id="vLvlBasic"      onclick="switchLevel('basic');      updateVistaLevel()" disabled>Básico</button>
         <button class="level-btn"        id="vLvlAccompaniment" onclick="switchLevel('accompaniment');updateVistaLevel()" disabled>Acomp.</button>
+        <button class="level-btn"        id="vLvlBasic"      onclick="switchLevel('basic');      updateVistaLevel()" disabled>Básico</button>
       </div>
     </div>
   </div>
@@ -3194,7 +3194,8 @@ function startBackingAt(offsetSec, atAudioTime) {
   backingSource.start(atAudioTime, from);
   backingCtxStart = atAudioTime;   // when (in ctx time) backing starts
   backingPosStart = from;          // where (in audio) backing starts
-  backingSource.onended = () => { backingSource = null; };
+  const _src = backingSource;
+  backingSource.onended = () => { if (backingSource === _src) backingSource = null; };
 }
 
 function setBackingVolume(val) {
@@ -3439,6 +3440,28 @@ function onRangeEndChange() {
 // ════════════════════════════════════════════════════
 //  PLAYBACK  (multi-measure + loop)
 // ════════════════════════════════════════════════════
+// ── Backing restart helper — used by initial play AND loop ──────────────────
+// Stops any current backing and starts it from the correct position for
+// the given 1-based measure number. Returns true if it handled a delayed
+// start (intro case), false otherwise.
+function startBackingForMeasure(measureNum) {
+  if (!backingBuffer || !backingEnabled) return false;
+  const ctx     = getCtx();
+  const bpm     = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
+  const beatSec = 60 / bpm;
+  const m0      = measureNum - 1;   // 0-based
+  const beats   = measureStartBeats[m0] || 0;
+  const audioPos = backingOffsetSec + beats * beatSec;
+  if (m0 === 0 && backingOffsetSec > 0) {
+    // Measure 1 with intro: play backing from 0, piano enters after offset
+    startBackingAt(0, ctx.currentTime + 0.05);
+    return true;   // caller must delay scheduleMeasure by backingOffsetSec
+  } else {
+    startBackingAt(audioPos, ctx.currentTime + 0.05);
+    return false;
+  }
+}
+
 async function togglePlay() {
   if (!songData) return;
   // If currently playing → pause (not stop)
@@ -3491,26 +3514,13 @@ async function togglePlay() {
   // backingOffsetSec = seconds in audio where measure 1 starts (after intro).
   // For measure N: audio position = backingOffsetSec + beatsToMeasureN * beatSec.
   // If starting from measure 1 with an intro, play from 0 and delay piano.
-  if (backingBuffer && backingEnabled) {
-    const ctx    = getCtx();
-    const bpm    = Math.max(20, Math.min(400, parseInt(document.getElementById('tempoInput').value) || 120));
-    const beatSec = 60 / bpm;
-    const startMeasure0 = playStartMeasure - 1; // 0-based
-    const beatsToStart  = measureStartBeats[startMeasure0] || 0;
-    const measureOffset = beatsToStart * beatSec;
-    const audioPos      = backingOffsetSec + measureOffset;
-
-    if (startMeasure0 === 0 && backingOffsetSec > 0) {
-      // Measure 1 + intro exists: play from 0, delay piano
-      startBackingAt(0, ctx.currentTime + 0.05);
-      playTimers.push(setTimeout(() => {
-        if (isPlaying) scheduleMeasure();
-      }, backingOffsetSec * 1000));
-      return;
-    } else {
-      // Any other measure (or no intro): seek backing to exact position
-      startBackingAt(audioPos, ctx.currentTime + 0.05);
-    }
+  const introDelay = startBackingForMeasure(playStartMeasure);
+  if (introDelay) {
+    // Measure 1 with intro: delay piano until after the intro
+    playTimers.push(setTimeout(() => {
+      if (isPlaying) scheduleMeasure();
+    }, backingOffsetSec * 1000));
+    return;
   }
 
   scheduleMeasure();
@@ -3599,7 +3609,15 @@ function scheduleMeasure(fromBeat = 0) {
     if (next > playEndMeasure) {
       if (loopEnabled) {
         playCurrentMeasure = playStartMeasure;
-        scheduleMeasure();
+        const loopIntro = startBackingForMeasure(playStartMeasure);
+        if (loopIntro) {
+          // Intro exists: delay piano just like the initial play
+          playTimers.push(setTimeout(() => {
+            if (isPlaying) scheduleMeasure();
+          }, backingOffsetSec * 1000));
+        } else {
+          scheduleMeasure();
+        }
       } else {
         stopPlay();
       }
