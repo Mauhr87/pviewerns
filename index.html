@@ -1979,6 +1979,652 @@ body {
 .level-badge.simp { background: #dbeafe; color: #1d4ed8; }
 .level-badge.acmp { background: #d1fae5; color: #065f46; }
 .level-badge.basic { background: #d1fae5; color: #065f46; }
+
+/* ── PianoView modern redesign ───────────────────────────────────────
+   Visual shell overhaul: brighter workspace, dark transport, responsive
+   tablet/mobile controls, and less "old document" styling. */
+:root {
+  color-scheme: light;
+  --bg: #edf1f5;
+  --surface: #ffffff;
+  --surface2: #f6f8fb;
+  --surface3: #e7edf4;
+  --border: #d7dfe9;
+  --border-strong: #acb8c7;
+  --accent: #0f766e;
+  --accent-lt: #e7f8f5;
+  --accent-2: #7c3aed;
+  --accent-2-lt: #f2edff;
+  --treble: #d97706;
+  --treble-lt: #fff4d6;
+  --bass: #2563eb;
+  --bass-lt: #e8f1ff;
+  --both: #8b5cf6;
+  --both-lt: #f3edff;
+  --text: #16181d;
+  --text-dim: #5f6875;
+  --shadow: rgba(15, 23, 42, 0.08);
+  --shadow-md: rgba(15, 23, 42, 0.16);
+  --pv-radius: 14px;
+  --pv-focus: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+body {
+  background:
+    linear-gradient(180deg, #f9fbfd 0, #edf1f5 320px, #e5ebf1 100%);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+.top-bar {
+  min-height: 64px;
+  padding: 12px 16px;
+  gap: 14px;
+  border: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background:
+    linear-gradient(135deg, #14161d 0%, #202431 52%, #123d3a 100%);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+}
+.logo {
+  color: #ffffff;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+.song-title {
+  color: #fff;
+  font-size: 15px;
+}
+.song-meta {
+  color: rgba(255,255,255,0.58);
+}
+.upload-btn,
+.biblio-btn,
+.settings-btn,
+.fs-btn {
+  min-height: 38px;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  box-shadow: none;
+}
+.upload-btn {
+  border-color: transparent;
+  background: var(--accent);
+  box-shadow: 0 10px 26px rgba(15,118,110,0.28);
+}
+.upload-btn:hover {
+  background: #115e59;
+}
+.biblio-btn:hover,
+.biblio-btn.open,
+.settings-btn:hover,
+.settings-btn.open,
+.fs-btn:hover {
+  border-color: rgba(255,255,255,0.34);
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+}
+.biblio-count {
+  background: #f59e0b;
+  color: #111827;
+}
+
+.controls {
+  padding: 12px 16px;
+  gap: 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.8) inset, 0 6px 18px rgba(15,23,42,0.06);
+}
+.clef-selector,
+.level-selector {
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #edf2f7;
+}
+.clef-btn,
+.level-btn {
+  border-radius: 9px;
+  font-weight: 800;
+}
+.clef-btn.active,
+.level-btn.active {
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(15,23,42,0.08);
+}
+.nav-btn,
+.mode-btn,
+.notation-btn,
+.piano-toggle-btn,
+.follow-btn,
+.loop-btn,
+.backing-icon-btn,
+#vistaMenuBtn,
+.bp-btn,
+.print-score-btn {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(15,23,42,0.06);
+}
+.nav-btn:hover:not(:disabled),
+.mode-btn:hover,
+.notation-btn:hover,
+.piano-toggle-btn:hover,
+.follow-btn:hover:not(:disabled),
+.loop-btn:hover,
+.backing-icon-btn:hover,
+#vistaMenuBtn:hover,
+.bp-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-lt);
+  color: var(--accent);
+}
+.mode-btn.overview,
+.notation-btn.active,
+.piano-toggle-btn.active,
+.loop-btn.active,
+.follow-btn.active,
+.backing-icon-btn.active,
+#vistaMenuBtn.active,
+.bp-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-lt);
+  color: var(--accent);
+}
+.measure-input,
+.tempo-input,
+.midi-select,
+.bp-offset-input {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(15,23,42,0.05);
+}
+.measure-input:focus,
+.tempo-input:focus,
+.midi-select:focus,
+.bp-offset-input:focus {
+  border-color: var(--bass);
+  box-shadow: var(--pv-focus);
+}
+
+.main-content {
+  background: transparent;
+}
+.empty-state {
+  padding: 42px 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(237,241,245,0.72));
+}
+.drop-zone {
+  max-width: 560px;
+  width: min(100%, 560px);
+  border: 1px dashed #b8c3d1;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 22px 70px rgba(15,23,42,0.12);
+}
+.drop-zone:hover,
+.drop-zone.drag-over {
+  border-color: var(--accent);
+  background: #fff;
+  transform: translateY(-1px);
+}
+.drop-icon {
+  opacity: 1;
+  filter: drop-shadow(0 10px 18px rgba(15,23,42,0.12));
+}
+.drop-title {
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+
+.notation-wrapper {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 10px 28px rgba(15,23,42,0.08);
+}
+.piano-outer {
+  background:
+    linear-gradient(180deg, #272b35 0%, #1d2028 100%);
+  border-bottom: 0;
+  box-shadow: inset 0 12px 28px rgba(255,255,255,0.04), 0 12px 34px rgba(15,23,42,0.2);
+}
+.piano-wrap {
+  padding-inline: 18px;
+}
+#piano {
+  filter: drop-shadow(0 14px 26px rgba(0,0,0,0.42));
+}
+.key-w {
+  background: linear-gradient(180deg, #ffffff 0%, #f7f8fb 74%, #dfe5ee 100%);
+  border-color: #c2ccd8;
+  border-top-color: #ffffff;
+  border-radius: 0 0 9px 9px;
+}
+.key-w:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 72%, #e8edf5 100%);
+}
+.key-b {
+  background: linear-gradient(180deg, #303541 0%, #151820 100%);
+  border-radius: 0 0 7px 7px;
+}
+.key-b:hover {
+  background: linear-gradient(180deg, #424856 0%, #20242e 100%);
+}
+.c-label,
+.octave-tick {
+  font-family: inherit;
+}
+
+.piano-legend-bar {
+  background: #16181d;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.legend-item {
+  color: rgba(255,255,255,0.7);
+}
+
+.bottom-panel {
+  min-height: 96px;
+  border-top: 1px solid var(--border);
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 -10px 28px rgba(15,23,42,0.08);
+}
+.sequence-panel,
+.current-panel {
+  border-color: var(--border);
+}
+.panel-label,
+.measure-label,
+.recent-title,
+.settings-section-title,
+.vista-panel-label,
+.mob-extras-title {
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.step-card {
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.05);
+}
+.step-card.active {
+  border-color: var(--accent);
+  background: var(--accent-lt);
+  box-shadow: 0 0 0 3px rgba(15,118,110,0.12);
+}
+.step-card-num {
+  background: #f6f8fb;
+}
+.step-card.active .step-card-num {
+  background: var(--accent);
+}
+.note-chip {
+  border-radius: 999px;
+}
+
+.bottom-bar {
+  padding: 10px 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  background:
+    linear-gradient(135deg, #15171d 0%, #222633 70%, #132f31 100%);
+  box-shadow: 0 -16px 44px rgba(15,23,42,0.22);
+}
+.bottom-bar .measure-label,
+.bottom-bar .measure-total,
+.bottom-bar .range-sep,
+.bottom-bar .tempo-orig,
+.bottom-bar .step-total {
+  color: rgba(255,255,255,0.66);
+}
+.bottom-bar #measureEnd,
+.bottom-bar .step-count {
+  color: rgba(255,255,255,0.78);
+}
+.bottom-bar .step-count {
+  min-width: 32px;
+  text-align: center;
+}
+.bottom-bar .clef-selector,
+.bottom-bar .level-selector,
+.bottom-bar .loop-btn,
+.bottom-bar .nav-btn,
+.bottom-bar .mode-btn,
+.bottom-bar .notation-btn,
+.piano-toggle-btn,
+.bottom-bar .follow-btn,
+.bottom-bar .backing-icon-btn,
+.bottom-bar #vistaMenuBtn,
+.mob-extras-btn {
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.82);
+  box-shadow: none;
+}
+.bottom-bar .clef-btn,
+.bottom-bar .level-btn {
+  color: rgba(255,255,255,0.62);
+}
+.bottom-bar .clef-btn.active,
+.bottom-bar .level-btn.active {
+  background: #fff;
+  color: var(--text);
+}
+.bottom-bar .measure-input,
+.bottom-bar .tempo-input,
+.bottom-bar .midi-select {
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+.bottom-bar .mode-btn.overview,
+.bottom-bar .notation-btn.active,
+.piano-toggle-btn.active,
+.bottom-bar .follow-btn.active,
+.bottom-bar .loop-btn.active {
+  border-color: rgba(45,212,191,0.5);
+  background: rgba(15,118,110,0.28);
+  color: #a7f3d0;
+}
+.bottom-bar .mode-btn,
+.bottom-bar .notation-btn,
+.bottom-bar .piano-toggle-btn {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: #aacbc1ba;
+  color: #111827;
+}
+.bottom-bar .mode-btn:hover,
+.bottom-bar .mode-btn.overview,
+.bottom-bar .notation-btn:hover,
+.bottom-bar .notation-btn.active,
+.bottom-bar .piano-toggle-btn:hover,
+.bottom-bar .piano-toggle-btn.active {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: rgb(115 184 179);
+  color: #111827;
+}
+.bottom-bar .backing-icon-btn {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: #aacbc1ba;
+  color: rgba(255, 255, 255, 0.92);
+}
+.bottom-bar .backing-icon-btn:hover,
+.bottom-bar .backing-icon-btn.active {
+  border-color: rgba(45, 212, 191, 0.58);
+  background: rgb(115 184 179);
+  color: #d9fff8;
+}
+.play-btn {
+  background: #10b981;
+  box-shadow: 0 12px 28px rgba(16,185,129,0.35);
+}
+.play-btn:hover {
+  background: #059669;
+}
+.stop-btn {
+  background: #ef4444;
+  box-shadow: 0 12px 28px rgba(239,68,68,0.28);
+}
+
+.biblio-dropdown,
+.settings-panel,
+.backing-panel,
+.vista-panel,
+#mobExtrasPanel {
+  border-color: var(--border);
+  background: #f6f8fb;
+  box-shadow: 0 28px 80px rgba(15,23,42,0.22);
+}
+.biblio-header,
+.settings-header,
+.backing-panel-header,
+.vista-panel-header {
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: #16181d;
+}
+.biblio-header-title,
+.settings-title,
+.backing-panel-title,
+.vista-panel-title {
+  color: #fff;
+}
+.biblio-close,
+.settings-close,
+.backing-panel-close,
+.vista-panel-close {
+  color: rgba(255,255,255,0.68);
+}
+.biblio-close:hover,
+.settings-close:hover,
+.backing-panel-close:hover,
+.vista-panel-close:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+.biblio-header .biblio-clear {
+  color: rgba(255,255,255,0.74);
+}
+.biblio-header .biblio-clear:hover {
+  background: rgba(239,68,68,0.14);
+  color: #fecaca;
+}
+.recent-card,
+.sound-option,
+.settings-row {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.05);
+}
+.recent-card:hover,
+.sound-option:hover,
+.sound-option.active {
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15,118,110,0.1);
+}
+.settings-panel .print-score-btn {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+.settings-panel .print-score-btn:hover:not(:disabled) {
+  background: #115e59;
+  color: #fff;
+}
+
+#welcomeModal {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(10px);
+}
+.welcome-box {
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,250,252,0.98));
+  box-shadow: 0 34px 90px rgba(15,23,42,0.3);
+}
+.welcome-title {
+  color: var(--text);
+}
+.welcome-fs-btn {
+  border-radius: 14px;
+  background: var(--accent);
+}
+.welcome-fs-btn:hover {
+  background: var(--accent);
+  filter: brightness(0.95);
+}
+
+@media (max-width: 1200px) {
+  .top-bar {
+    gap: 10px;
+  }
+  .logo {
+    font-size: 18px;
+  }
+  .upload-btn,
+  .biblio-btn {
+    padding-inline: 12px;
+  }
+}
+
+@media (pointer: coarse) and (max-width: 960px), (max-width: 760px) {
+  body {
+    height: 100dvh;
+  }
+  .top-bar {
+    min-height: 0;
+    padding: 9px 10px;
+    gap: 8px;
+  }
+  .logo {
+    font-size: 0;
+    gap: 0;
+  }
+  .logo::before {
+    content: "🎹";
+    font-size: 22px;
+  }
+  .song-title {
+    font-size: 13px;
+  }
+  .song-meta {
+    font-size: 10px;
+  }
+  .upload-btn,
+  .biblio-btn {
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .settings-btn,
+  .fs-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .controls {
+    padding: 8px 10px;
+    gap: 8px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .controls > * {
+    flex-shrink: 0;
+  }
+  .notation-wrapper {
+    height: 150px;
+  }
+  #notationSVG svg {
+    height: 144px !important;
+  }
+  .piano-outer {
+    padding: 10px 0 8px;
+  }
+  .piano-legend-bar {
+    display: none;
+  }
+  .bottom-panel {
+    min-height: 42px;
+  }
+  .note-panel-bar {
+    min-height: 42px;
+    padding: 9px 12px;
+  }
+  .note-panel-content.open {
+    bottom: 104px;
+    border-radius: 22px 22px 0 0;
+  }
+  .bottom-bar {
+    padding: 8px 10px;
+    gap: 7px;
+  }
+  .bb-center {
+    min-width: 0;
+    width: 100%;
+  }
+  .bb-playrow {
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .bottom-bar .play-btn {
+    width: 46px;
+    height: 46px;
+  }
+  .bottom-bar .stop-btn,
+  .bottom-bar .nav-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .bottom-bar .mode-btn,
+  .bottom-bar .notation-btn,
+  .piano-toggle-btn,
+  .bottom-bar .follow-btn {
+    padding: 8px 11px;
+  }
+  .biblio-dropdown,
+  .settings-panel {
+    width: min(420px, 100vw);
+  }
+  .drop-zone {
+    padding: 34px 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  .top-bar {
+    flex-wrap: wrap;
+  }
+  .song-info {
+    order: 1;
+    flex: 1 1 calc(100% - 42px);
+  }
+  .logo {
+    order: 0;
+  }
+  .upload-btn,
+  .biblio-btn,
+  .settings-btn,
+  .fs-btn {
+    order: 2;
+  }
+  .upload-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .biblio-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .settings-btn,
+  .fs-btn {
+    flex: 0 0 36px;
+  }
+  .biblio-dropdown,
+  .settings-panel {
+    width: 100vw;
+  }
+  .welcome-box {
+    padding: 26px 20px 20px;
+  }
+}
 </style>
 </head>
 <body>
@@ -4556,9 +5202,17 @@ document.addEventListener('fullscreenchange', () => {
 
 // ── Mobile welcome modal (fullscreen suggestion) ──────
 (function initMobileWelcome() {
+  const WELCOME_KEY = 'pv_welcome_seen_v1';
+  if (localStorage.getItem(WELCOME_KEY) === '1') return;
   const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
                    || ('ontouchstart' in window && window.innerWidth < 1024);
   if (!isMobile) return;
+
+  window.dismissWelcomeModal = function(enterFullscreen) {
+    localStorage.setItem(WELCOME_KEY, '1');
+    document.getElementById('welcomeModal')?.remove();
+    if (enterFullscreen) toggleFullscreen();
+  };
 
   const modal = document.createElement('div');
   modal.id = 'welcomeModal';
@@ -4567,11 +5221,8 @@ document.addEventListener('fullscreenchange', () => {
       <div class="welcome-icon">🎹</div>
       <div class="welcome-title">PianoView</div>
       <div class="welcome-msg">Para la mejor experiencia en móvil activa la pantalla completa y gira el dispositivo en horizontal.</div>
-      <button class="welcome-fs-btn" onclick="
-        document.getElementById('welcomeModal').remove();
-        toggleFullscreen();
-      ">⛶ Activar pantalla completa</button>
-      <button class="welcome-skip-btn" onclick="document.getElementById('welcomeModal').remove()">Continuar sin activar</button>
+      <button class="welcome-fs-btn" onclick="dismissWelcomeModal(true)">⛶ Activar pantalla completa</button>
+      <button class="welcome-skip-btn" onclick="dismissWelcomeModal(false)">Continuar sin activar</button>
     </div>`;
   document.body.appendChild(modal);
 })();
@@ -5338,7 +5989,7 @@ function printScore() {
       let pages = '';
       for (let p = 1; p <= pageCount; p++) {
         const svg = vrvToolkit.renderToSVG(p, {});
-        pages += `<div class="page">${svg}</div>`;
+        pages += `<div class="page${p === pageCount ? ' last-page' : ''}">${svg}</div>`;
       }
 
       // Restore app rendering
@@ -5363,7 +6014,7 @@ function printScore() {
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #fff; font-family: serif; }
-    h1 {
+    .sheet-title {
       font-size: 16px; font-weight: bold; text-align: center;
       padding: 10mm ${marginMM} 4mm; color: #111;
     }
@@ -5373,7 +6024,7 @@ function printScore() {
       page-break-after: always;
       break-after: page;
     }
-    .page:last-child { page-break-after: avoid; break-after: avoid; }
+    .page.last-page { page-break-after: avoid; break-after: avoid; }
     .page svg { width: 100%; height: auto; display: block; }
     .page:first-child { padding-top: 0; }
     .print-footer {
@@ -5392,9 +6043,12 @@ function printScore() {
       }
     }
     @media print {
-      body { background: white; }
+      html, body { background: white; min-height: 0; }
       .sheet { padding: 0; box-shadow: none; max-width: none; margin: 0; }
+      .page { padding: 0; overflow: hidden; }
       .no-print { display: none; }
+      .sheet-title,
+      .print-footer { display: none !important; }
     }
   </style>
 </head>
@@ -5405,7 +6059,7 @@ function printScore() {
     <button onclick="window.close()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5);border-radius:5px;padding:5px 12px;cursor:pointer;margin-left:6px">✕ Cerrar</button>
   </div>
   <div class="sheet">
-    <h1>${title}</h1>
+    <div class="sheet-title">${title}</div>
     ${pages}
     <div class="print-footer">Generado con PianoView</div>
   </div>
