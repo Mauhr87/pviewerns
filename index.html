@@ -6507,53 +6507,188 @@ function buildStaffMap() {
 
 }
 
-// ── Highlight current measure in SVG ─────────────────
+function notationScreenRectToSvg(svgEl, rect) {
+  const ctm = svgEl.getScreenCTM();
+  if (!ctm) return null;
+  const inv = ctm.inverse();
+  const pt1 = svgEl.createSVGPoint();
+  const pt2 = svgEl.createSVGPoint();
+  pt1.x = rect.left;
+  pt1.y = rect.top;
+  pt2.x = rect.right;
+  pt2.y = rect.bottom;
+  const sp1 = pt1.matrixTransform(inv);
+  const sp2 = pt2.matrixTransform(inv);
+  return {
+    x: Math.min(sp1.x, sp2.x),
+    y: Math.min(sp1.y, sp2.y),
+    width: Math.abs(sp2.x - sp1.x),
+    height: Math.abs(sp2.y - sp1.y),
+  };
+}
+
+function usableScreenRect(rect) {
+  return rect && Number.isFinite(rect.left) && Number.isFinite(rect.right)
+      && Number.isFinite(rect.top) && Number.isFinite(rect.bottom)
+      && rect.right >= rect.left && rect.bottom >= rect.top;
+}
+
+function unionScreenRects(rects) {
+  const valid = rects.filter(usableScreenRect);
+  if (!valid.length) return null;
+  return {
+    left:   Math.min(...valid.map(r => r.left)),
+    right:  Math.max(...valid.map(r => r.right)),
+    top:    Math.min(...valid.map(r => r.top)),
+    bottom: Math.max(...valid.map(r => r.bottom)),
+  };
+}
+
+function elementScreenRect(el) {
+  if (!el) return null;
+  const direct = el.getBoundingClientRect();
+  if (usableScreenRect(direct) && (direct.width > 0 || direct.height > 0)) return direct;
+  return unionScreenRects(Array.from(el.querySelectorAll('*')).map(child => child.getBoundingClientRect()))
+      || (usableScreenRect(direct) ? direct : null);
+}
+
+function getMeasureElement(svgEl, measureNum) {
+  const measures = svgEl.querySelectorAll('g.measure');
+  return measures[measureNum - 1] || null;
+}
+
+function measureDurationBeats(measureNum) {
+  const parts = (songData?.timeSig || '4/4').split('/');
+  const num   = parseInt(parts[0]) || 4;
+  const den   = parseInt(parts[1]) || 4;
+  let span    = Math.max(1, num * (4 / den));
+
+  const measure = songData?.measures?.[measureNum - 1];
+  const notes = measure ? [...(measure.treble || []), ...(measure.bass || [])] : [];
+  notes.forEach(n => {
+    const end = (Number(n.beat) || 0) + Math.max(0.05, Number(n.duration) || 0.5);
+    if (end > span) span = end;
+  });
+  return span;
+}
+
+function ensureNotationPlayhead(svgEl) {
+  svgEl.querySelector('#vrv-mhl')?.remove();
+
+  let layer = svgEl.querySelector('#vrv-playhead-layer');
+  if (!layer) {
+    layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    layer.id = 'vrv-playhead-layer';
+    layer.setAttribute('pointer-events', 'none');
+    svgEl.appendChild(layer);
+  }
+
+  layer.querySelector('#vrv-playhead-soft')?.remove();
+  layer.querySelector('#vrv-playhead-core')?.remove();
+
+  let bar = layer.querySelector('#vrv-playhead-bar');
+  if (!bar) {
+    bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bar.id = 'vrv-playhead-bar';
+    bar.setAttribute('fill', '#0284c7');
+    bar.setAttribute('rx', '2');
+    layer.appendChild(bar);
+  }
+  bar.style.mixBlendMode = 'multiply';
+
+  return { layer, bar };
+}
+
+function setNotationPlayheadRect(svgEl, rectEl, centerX, top, bottom, width, opacity) {
+  const svgRect = notationScreenRectToSvg(svgEl, {
+    left: centerX - width / 2,
+    right: centerX + width / 2,
+    top,
+    bottom,
+  });
+  if (!svgRect) return false;
+  rectEl.setAttribute('x', svgRect.x);
+  rectEl.setAttribute('y', svgRect.y);
+  rectEl.setAttribute('width', Math.max(0.1, svgRect.width));
+  rectEl.setAttribute('height', Math.max(0.1, svgRect.height));
+  rectEl.setAttribute('opacity', opacity);
+  return true;
+}
+
+function positionNotationPlayhead(svgEl, measureNum, step, noteIds = []) {
+  const playhead = ensureNotationPlayhead(svgEl);
+  const measureEl = getMeasureElement(svgEl, measureNum);
+  if (!measureEl) {
+    playhead.layer.setAttribute('display', 'none');
+    return;
+  }
+
+  try {
+    const measureRect = elementScreenRect(measureEl);
+    if (!usableScreenRect(measureRect)) {
+      playhead.layer.setAttribute('display', 'none');
+      return;
+    }
+
+    const staffRects = Array.from(measureEl.querySelectorAll(':scope > g.staff'))
+      .map(elementScreenRect);
+    const staffRect = unionScreenRects(staffRects) || measureRect;
+
+    const noteRects = noteIds
+      .map(id => svgEl.querySelector(`#${CSS.escape(id)}`))
+      .filter(Boolean)
+      .map(elementScreenRect);
+    const noteRect = unionScreenRects(noteRects);
+    const hasNotes = !!noteRect;
+
+    let centerX;
+    if (noteRect) {
+      centerX = (noteRect.left + noteRect.right) / 2;
+    } else {
+      const beat  = Number.isFinite(step?.beat) ? step.beat : 0;
+      const span  = measureDurationBeats(measureNum);
+      const ratio = Math.max(0, Math.min(1, beat / span));
+      const pad   = Math.min(10, Math.max(0, measureRect.width * 0.04));
+      centerX = (measureRect.left + pad) + (measureRect.width - pad * 2) * ratio;
+    }
+
+    const top    = staffRect.top - 4;
+    const bottom = staffRect.bottom + 4;
+    const barOk = setNotationPlayheadRect(svgEl, playhead.bar, centerX, top, bottom, 15, hasNotes ? '0.42' : '0.16');
+    if (barOk) playhead.layer.removeAttribute('display');
+    else playhead.layer.setAttribute('display', 'none');
+  } catch(e) {
+    playhead.layer.setAttribute('display', 'none');
+    console.warn('Notation playhead error:', e);
+  }
+}
+
+function notationStepNoteIds(step) {
+  if (!step || !step.notes || !step.notes.length) return [];
+  const beatKey = Math.round((step.beat || 0) * 10000);
+  const allIds  = (measureNoteMap[currentMeasure] || {})[beatKey] || [];
+
+  return allIds.filter(id => {
+    if (activeClef === 'both') return true;
+    const staffN = noteStaffMap[id];
+    if (!staffN) return true; // staff unknown: keep it visible
+    return activeClef === 'treble' ? staffN === 1 : staffN === 2;
+  });
+}
+
+// ── Move the current sheet-music playhead ─────────────
 function updateNotationMeasure(measureNum) {
   if (!notationActive || !vrvRendered) return;
   const svgEl = document.querySelector('#notationSVG svg');
   if (!svgEl) return;
 
-  // Re-use a single persistent rect appended to the SVG root
-  let hlRect = svgEl.querySelector('#vrv-mhl');
-  if (!hlRect) {
-    hlRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    hlRect.id = 'vrv-mhl';
-    hlRect.setAttribute('fill',         'rgba(91,33,182,0.09)');
-    hlRect.setAttribute('stroke',       'rgba(91,33,182,0.38)');
-    hlRect.setAttribute('stroke-width', '0.5');
-    hlRect.setAttribute('rx',           '6');
-    hlRect.setAttribute('pointer-events', 'none');
-    svgEl.appendChild(hlRect);
-  }
-
-  const measures = svgEl.querySelectorAll('g.measure');
-  const target   = measures[measureNum - 1];
-  if (!target) { hlRect.setAttribute('display', 'none'); return; }
-  hlRect.removeAttribute('display');
-
-  try {
-    // Convert screen-space bounding rect → SVG root coordinate space.
-    // This is correct regardless of nested transforms inside Verovio's SVG.
-    const mBR  = target.getBoundingClientRect();
-    const inv  = svgEl.getScreenCTM().inverse();
-    const pt1  = svgEl.createSVGPoint();
-    const pt2  = svgEl.createSVGPoint();
-    pt1.x = mBR.left;  pt1.y = mBR.top;
-    pt2.x = mBR.right; pt2.y = mBR.bottom;
-    const sp1  = pt1.matrixTransform(inv);
-    const sp2  = pt2.matrixTransform(inv);
-    hlRect.setAttribute('x',      sp1.x - 5);
-    hlRect.setAttribute('y',      sp1.y - 8);
-    hlRect.setAttribute('width',  sp2.x - sp1.x + 10);
-    hlRect.setAttribute('height', sp2.y - sp1.y + 16);
-  } catch(e) {
-    console.warn('Notation highlight error:', e);
-  }
-
+  const target = getMeasureElement(svgEl, measureNum);
+  positionNotationPlayhead(svgEl, measureNum, null, []);
+  if (!target) return;
   scrollNotationTo(target);
 }
 
-// ── Highlight step notes in SVG ───────────────────────
+// ── Sync the sheet-music playhead with the active step ─
 function updateNotationNotes(step) {
   if (!notationActive || !vrvRendered) return;
   const svgEl = document.querySelector('#notationSVG svg');
@@ -6578,25 +6713,8 @@ function updateNotationNotes(step) {
     }
   }
 
-  // ── Highlight notes in the active clef only ───────────────────
-  if (step && step.notes && step.notes.length) {
-    const beatKey = Math.round((step.beat || 0) * 10000);
-    const allIds  = (measureNoteMap[currentMeasure] || {})[beatKey] || [];
-
-    const filteredIds = allIds.filter(id => {
-      if (activeClef === 'both') return true;
-      const staffN = noteStaffMap[id];
-      if (!staffN) return true; // staff unknown → keep
-      return activeClef === 'treble' ? staffN === 1 : staffN === 2;
-    });
-
-    if (filteredIds.length) {
-      const selectors = filteredIds.map(id => `#${CSS.escape(id)} *`).join(',\n');
-      css += `${selectors} { fill: #7c3aed !important; stroke: #7c3aed !important; }`;
-    }
-  }
-
   styleEl.textContent = css;
+  positionNotationPlayhead(svgEl, currentMeasure, step, notationStepNoteIds(step));
 }
 
 // ── Scroll notation to bring measure into view ────────
