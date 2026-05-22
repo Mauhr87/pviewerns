@@ -195,6 +195,111 @@ body {
 .measure-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-lt); }
 .measure-total { font-size: 13px; color: var(--text-dim); }
 
+.measure-input.slider-enabled {
+  cursor: pointer;
+}
+
+.measure-slider-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 338;
+  background: rgba(15,23,42,0.28);
+}
+.measure-slider-overlay.open { display: block; }
+
+.measure-slider-panel {
+  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  z-index: 339;
+  width: min(440px, calc(100vw - 28px));
+  transform: translateX(-50%);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgba(15,23,42,0.28);
+  overflow: hidden;
+}
+.measure-slider-panel.open {
+  display: block;
+}
+.measure-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  background: #16181d;
+  color: #fff;
+}
+.measure-slider-title {
+  font-size: 13px;
+  font-weight: 800;
+}
+.measure-slider-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.78);
+  cursor: pointer;
+}
+.measure-slider-close:hover {
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+}
+.measure-slider-body {
+  padding: 16px;
+}
+.measure-slider-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+.measure-slider-current {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--accent);
+  line-height: 1;
+}
+.measure-slider-total {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 700;
+}
+.measure-slider-range {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.measure-slider-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.measure-slider-actions button {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.measure-slider-actions button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-lt);
+}
+
 .play-btn {
   width: 36px;
   height: 36px;
@@ -2519,6 +2624,17 @@ select {
 }
 
 @media (max-width: 760px), (max-width: 960px) and (max-height: 520px) {
+  .measure-slider-panel {
+    bottom: 78px;
+    width: calc(100vw - 20px);
+    border-radius: 18px 18px 0 0;
+  }
+  .measure-slider-current {
+    font-size: 40px;
+  }
+  .measure-slider-actions button {
+    min-height: 42px;
+  }
   .note-panel-bar {
     display: flex;
     min-height: 42px;
@@ -3077,6 +3193,29 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
 
 </div>
 
+<!-- MEASURE SLIDER -->
+<div class="measure-slider-overlay" id="measureSliderOverlay" onclick="closeMeasureSlider()"></div>
+<div class="measure-slider-panel" id="measureSliderPanel" role="dialog" aria-modal="true" aria-labelledby="measureSliderTitle">
+  <div class="measure-slider-header">
+    <div class="measure-slider-title" id="measureSliderTitle">Seleccionar compás</div>
+    <button class="measure-slider-close" onclick="closeMeasureSlider()" title="Cerrar">✕</button>
+  </div>
+  <div class="measure-slider-body">
+    <div class="measure-slider-value">
+      <span class="measure-slider-current" id="measureSliderCurrent">1</span>
+      <span class="measure-slider-total" id="measureSliderTotal">/ —</span>
+    </div>
+    <input type="range" class="measure-slider-range" id="measureSliderRange" min="1" max="1" value="1"
+      oninput="setMeasureFromSlider(this.value)" onchange="setMeasureFromSlider(this.value, true)">
+    <div class="measure-slider-actions">
+      <button onclick="nudgeMeasureSlider(-10)">-10</button>
+      <button onclick="nudgeMeasureSlider(-1)">-1</button>
+      <button onclick="nudgeMeasureSlider(1)">+1</button>
+      <button onclick="nudgeMeasureSlider(10)">+10</button>
+    </div>
+  </div>
+</div>
+
 <!-- BOTTOM BAR -->
 <div class="bottom-bar">
 
@@ -3101,8 +3240,9 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
     <div class="measure-nav">
       <button class="nav-btn" id="btnPrev" onclick="changeMeasure(-1)" disabled title="Compás anterior (Shift+←)">◀</button>
       <span class="measure-label">Compás</span>
-      <input type="number" class="measure-input" id="measureInput" value="1" min="1"
-        onchange="goToMeasure(+this.value)" onkeydown="if(event.key==='Enter')goToMeasure(+this.value)">
+      <input type="number" class="measure-input slider-enabled" id="measureInput" value="1" min="1"
+        readonly inputmode="none" onclick="openMeasureSlider(event)" onfocus="openMeasureSlider(event)"
+        title="Toca para elegir compás con slider">
       <span class="range-sep">—</span>
       <input type="number" class="measure-input" id="measureEnd" min="1"
         placeholder="fin" style="width:44px"
@@ -3700,6 +3840,55 @@ function updateNav() {
   const endEl = document.getElementById('measureEnd');
   if (endEl.value && parseInt(endEl.value) < currentMeasure) endEl.value = currentMeasure;
   if (endEl.value && parseInt(endEl.value) > total) endEl.value = total;
+  syncMeasureSliderUI();
+}
+
+function openMeasureSlider(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  if (!songData) {
+    showToast('Carga una pieza primero', true);
+    return;
+  }
+  closeMobExtras();
+  syncMeasureSliderUI();
+  document.getElementById('measureSliderOverlay')?.classList.add('open');
+  document.getElementById('measureSliderPanel')?.classList.add('open');
+  requestAnimationFrame(() => {
+    document.getElementById('measureSliderRange')?.focus({ preventScroll: true });
+  });
+}
+
+function closeMeasureSlider() {
+  document.getElementById('measureSliderOverlay')?.classList.remove('open');
+  document.getElementById('measureSliderPanel')?.classList.remove('open');
+}
+
+function syncMeasureSliderUI() {
+  const range = document.getElementById('measureSliderRange');
+  const current = document.getElementById('measureSliderCurrent');
+  const totalLabel = document.getElementById('measureSliderTotal');
+  if (!range || !current || !totalLabel) return;
+  const total = songData ? songData.measures.length : 1;
+  const value = Math.max(1, Math.min(total, currentMeasure || 1));
+  range.max = String(total);
+  range.value = String(value);
+  current.textContent = String(value);
+  totalLabel.textContent = `/ ${total || '—'}`;
+}
+
+function setMeasureFromSlider(value) {
+  if (!songData) return;
+  const total = songData.measures.length;
+  const next = Math.max(1, Math.min(total, Number(value) || currentMeasure || 1));
+  if (next !== currentMeasure) goToMeasure(next);
+  else syncMeasureSliderUI();
+}
+
+function nudgeMeasureSlider(delta) {
+  const range = document.getElementById('measureSliderRange');
+  const base = Number(range?.value) || currentMeasure || 1;
+  setMeasureFromSlider(base + delta);
 }
 
 function scrollToActive() {
@@ -5354,6 +5543,7 @@ document.addEventListener('fullscreenchange', () => {
 //  PANEL CONTROLS — Biblioteca + Settings
 // ════════════════════════════════════════════════════
 function closeAllPanels() {
+  closeMeasureSlider();
   document.getElementById('biblioPanel').classList.remove('open');
   document.getElementById('settingsPanel').classList.remove('open');
   document.getElementById('panelOverlay').classList.remove('open');
