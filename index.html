@@ -1287,8 +1287,8 @@ body {
 /* ══ MOBILE/TABLET (viewport ≤1366px) ══════════
    Cubre telefonos y tablets en landscape/portrait.
    Activa tambien en tablets grandes (Lenovo/iPad landscape ~1280px).
-   Hides bb-left + bb-right, collapses panels,
-   adds mobile-extras popup for secondary controls.   */
+   Hides bb-left + bb-right and adds mobile-extras popup
+   for secondary controls. Phone-only rules collapse panels.   */
 @media (max-width: 1366px) {
 
   /* Hide secondary bottom-bar columns */
@@ -1303,65 +1303,6 @@ body {
   .piano-toggle-btn .btn-label,
   .follow-btn .btn-label { display: none; }
 
-  /* Show the single collapse bar */
-  .note-panel-bar { display: flex; }
-  .panel-toggle-arrow { display: inline-block !important; }
-
-  /* Bottom panel: compact, column, no min-height */
-  .bottom-panel { flex-direction: column; padding: 0; gap: 0; min-height: 0; max-height: none; }
-
-  /* Content hidden by default (collapsed) */
-  .note-panel-content { display: none; }
-
-  /* ── OPEN STATE: fixed overlay floating above bottom bar ── */
-  .note-panel-content.open {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    bottom: 96px;          /* clears the two-row bottom bar */
-    left: 0; right: 0;
-    z-index: 150;
-    max-height: 55vh;
-    overflow-y: auto;
-    background: var(--surface);
-    border-radius: 16px 16px 0 0;
-    border-top: 2px solid var(--accent);
-    box-shadow: 0 -6px 32px rgba(0,0,0,0.28);
-    padding: 12px 14px 18px;
-    gap: 12px;
-  }
-
-  /* Sequence panel inside overlay */
-  .note-panel-content.open .sequence-panel {
-    max-width: 100%; border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 0 0 10px; overflow-x: auto; flex-shrink: 0;
-  }
-  .note-panel-content.open .steps-row {
-    flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px;
-    gap: 6px;
-  }
-  .note-panel-content.open .step-card { min-width: 54px; }
-
-  /* Current panel inside overlay */
-  .note-panel-content.open .current-panel {
-    width: 100%; border-left: none; padding: 4px 0 0;
-    flex-direction: row; flex-wrap: wrap; gap: 12px;
-    align-items: center; flex-shrink: 0;
-  }
-  .note-panel-content.open .note-group { flex-direction: row; align-items: center; gap: 8px; }
-  .note-panel-content.open .note-chip { font-size: 13px; padding: 4px 10px; }
-
-  /* Notation: flexible height so it fills available space (no piano when active) */
-  .notation-wrapper { height: auto; flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
-  #notationSVG svg { height: 175px !important; }
-
-  /* Piano: reduce padding so 88 keys fit */
-  .piano-outer { padding: 12px 0 10px; }
-
-  /* Smaller piano legend */
-  .piano-legend-bar { padding: 3px 0; }
-  .legend-item { font-size: 10px; }
 }
 
 /* Mobile extras popup */
@@ -2540,17 +2481,6 @@ select {
   .piano-legend-bar {
     display: none;
   }
-  .bottom-panel {
-    min-height: 42px;
-  }
-  .note-panel-bar {
-    min-height: 42px;
-    padding: 9px 12px;
-  }
-  .note-panel-content.open {
-    bottom: 104px;
-    border-radius: 22px 22px 0 0;
-  }
   .bottom-bar {
     padding: 8px 10px;
     gap: 7px;
@@ -2585,6 +2515,99 @@ select {
   }
   .drop-zone {
     padding: 34px 24px;
+  }
+}
+
+@media (max-width: 760px), (max-width: 960px) and (max-height: 520px) {
+  .note-panel-bar {
+    display: flex;
+    min-height: 42px;
+    padding: 9px 12px;
+  }
+  .panel-toggle-arrow {
+    display: inline-block !important;
+  }
+  .bottom-panel {
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+    min-height: 42px;
+    max-height: none;
+  }
+  .note-panel-content {
+    display: none;
+  }
+  .note-panel-content.open {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    bottom: 104px;
+    left: 0;
+    right: 0;
+    z-index: 150;
+    max-height: 55vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-radius: 22px 22px 0 0;
+    border-top: 2px solid var(--accent);
+    box-shadow: 0 -6px 32px rgba(0,0,0,0.28);
+    padding: 12px 14px 18px;
+    gap: 12px;
+  }
+  .note-panel-content.open .sequence-panel {
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 0 0 10px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .note-panel-content.open .steps-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    gap: 6px;
+  }
+  .note-panel-content.open .step-card {
+    min-width: 54px;
+  }
+  .note-panel-content.open .current-panel {
+    width: 100%;
+    border-left: none;
+    padding: 4px 0 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .note-panel-content.open .note-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .note-panel-content.open .note-chip {
+    font-size: 13px;
+    padding: 4px 10px;
+  }
+  .notation-wrapper {
+    height: auto;
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  #notationSVG svg {
+    height: 175px !important;
+  }
+  .piano-outer {
+    padding: 12px 0 10px;
+  }
+  .piano-legend-bar {
+    padding: 3px 0;
+  }
+  .legend-item {
+    font-size: 10px;
   }
 }
 
@@ -4821,9 +4844,12 @@ let heldFromPrevStep = new Set(); // notes held over from previous step — must
 let releaseTimers   = {};           // delayed removal from heldFromPrevStep (Casio retrigger guard)
 let followErrorSoundEnabled = localStorage.getItem('pv_follow_error_sound') === 'on';
 let lastFollowErrorSoundAt = 0;
+let incompleteChordTimer = null;
+const INCOMPLETE_CHORD_GRACE_MS = 700;
 
 function resetFollowInputState(options = {}) {
   const { clearHighlights = false } = options;
+  clearIncompleteChordWarning();
   pressedNotes.clear();
   correctNotes.clear();
   heldFromPrevStep.clear();
@@ -4840,6 +4866,37 @@ function ensureActiveMIDIHandler() {
   updateMIDIDot(true);
   updateFollowBtn();
   return true;
+}
+
+function followStepToken() {
+  return `${currentMeasure}:${currentStep}`;
+}
+
+function clearIncompleteChordWarning() {
+  if (incompleteChordTimer) {
+    clearTimeout(incompleteChordTimer);
+    incompleteChordTimer = null;
+  }
+}
+
+function isFollowStepComplete(required = currentStepRequired()) {
+  if (!required.size) return true;
+  return [...required].every(midi => correctNotes.has(midi) && pressedNotes.has(midi));
+}
+
+function scheduleIncompleteChordWarning(required) {
+  clearIncompleteChordWarning();
+  if (!followPlaying || required.size < 2 || correctNotes.size === 0) return;
+  const token = followStepToken();
+  incompleteChordTimer = setTimeout(() => {
+    incompleteChordTimer = null;
+    if (!followPlaying || followStepToken() !== token) return;
+    const currentRequired = currentStepRequired();
+    const hasPartial = [...currentRequired].some(midi => correctNotes.has(midi) || pressedNotes.has(midi));
+    if (currentRequired.size > 1 && hasPartial && !isFollowStepComplete(currentRequired)) {
+      playFollowErrorSound();
+    }
+  }, INCOMPLETE_CHORD_GRACE_MS);
 }
 
 function onFollowErrorSoundToggle(enabled) {
@@ -5032,13 +5089,18 @@ function onFollowNoteOn(note) {
     markCorrectKey(note);
     correctNotes.add(note);
   } else if (!followTimer) {
+    clearIncompleteChordWarning();
     playFollowErrorSound();
     return;
   }
 
-  // Use correctNotes (freshly pressed this step) to avoid carry-over advances
-  const allDone = [...required].every(m => correctNotes.has(m));
-  if (allDone) scheduleFollowAdvance();
+  // For chords, every required note must be freshly pressed and currently held.
+  if (isFollowStepComplete(required)) {
+    clearIncompleteChordWarning();
+    scheduleFollowAdvance();
+  } else {
+    scheduleIncompleteChordWarning(required);
+  }
 }
 
 function pausePlay() {
@@ -5123,6 +5185,7 @@ function clearCorrectKey(midi) {
 }
 
 function scheduleFollowAdvance() {
+  clearIncompleteChordWarning();
   if (followTimer) return;
   followTimer = setTimeout(() => {
     followTimer = null;
@@ -5132,6 +5195,7 @@ function scheduleFollowAdvance() {
 
 function doFollowAdvance() {
   if (!followPlaying) return;
+  clearIncompleteChordWarning();
   // Snapshot held notes BEFORE clearing — user must release these to press again
   heldFromPrevStep = new Set(pressedNotes);
   correctNotes.clear();
