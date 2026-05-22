@@ -2857,6 +2857,17 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
       </label>
     </div>
 
+    <div class="settings-row">
+      <div>
+        <div class="settings-row-label">Sonido al equivocarse</div>
+        <div class="settings-row-sub">Aviso breve cuando tocas una nota incorrecta en seguimiento</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="followErrorSoundToggle" onchange="onFollowErrorSoundToggle(this.checked)">
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
 
 
     <hr class="settings-divider">
@@ -4808,6 +4819,8 @@ let followTimer   = null;       // debounce before advancing
 let correctNotes  = new Set();  // notes pressed correctly in this step
 let heldFromPrevStep = new Set(); // notes held over from previous step — must release+repress
 let releaseTimers   = {};           // delayed removal from heldFromPrevStep (Casio retrigger guard)
+let followErrorSoundEnabled = localStorage.getItem('pv_follow_error_sound') === 'on';
+let lastFollowErrorSoundAt = 0;
 
 function resetFollowInputState(options = {}) {
   const { clearHighlights = false } = options;
@@ -4827,6 +4840,50 @@ function ensureActiveMIDIHandler() {
   updateMIDIDot(true);
   updateFollowBtn();
   return true;
+}
+
+function onFollowErrorSoundToggle(enabled) {
+  followErrorSoundEnabled = Boolean(enabled);
+  localStorage.setItem('pv_follow_error_sound', followErrorSoundEnabled ? 'on' : 'off');
+}
+
+function initFollowErrorSoundUI() {
+  const toggle = document.getElementById('followErrorSoundToggle');
+  if (toggle) toggle.checked = followErrorSoundEnabled;
+}
+
+function playFollowErrorSound() {
+  if (!followErrorSoundEnabled) return;
+  const nowMs = performance.now();
+  if (nowMs - lastFollowErrorSoundAt < 170) return;
+  lastFollowErrorSoundAt = nowMs;
+
+  const ctx = getCtx();
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  const start = ctx.currentTime + 0.005;
+  const end = start + 0.16;
+
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.0001, start);
+  master.gain.exponentialRampToValueAtTime(0.15, start + 0.012);
+  master.gain.exponentialRampToValueAtTime(0.0001, end);
+  master.connect(ctx.destination);
+
+  [
+    { type: 'square', from: 220, to: 150, gain: 0.75 },
+    { type: 'sawtooth', from: 207, to: 135, gain: 0.25 }
+  ].forEach(tone => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = tone.type;
+    osc.frequency.setValueAtTime(tone.from, start);
+    osc.frequency.exponentialRampToValueAtTime(tone.to, end);
+    gain.gain.value = tone.gain;
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start(start);
+    osc.stop(end + 0.03);
+  });
 }
 
 async function initMIDI() {
@@ -4974,6 +5031,9 @@ function onFollowNoteOn(note) {
   if (required.has(note)) {
     markCorrectKey(note);
     correctNotes.add(note);
+  } else if (!followTimer) {
+    playFollowErrorSound();
+    return;
   }
 
   // Use correctNotes (freshly pressed this step) to avoid carry-over advances
@@ -5726,6 +5786,7 @@ idbOpen().then(db => {
 
 // Init sound UI on startup
 initSoundUI();
+initFollowErrorSoundUI();
 
 // ════════════════════════════════════════════════════
 //  STATE PERSISTENCE  (localStorage, keyed by song title)
