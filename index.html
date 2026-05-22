@@ -3217,7 +3217,8 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
 // Piano key dimensions — smaller on phone so all 88 keys fit in landscape
 // 52 white keys × 15px = 780px → fits S25 Ultra landscape (~820px)
 const MOBILE_LAYOUT_QUERY = '(max-width: 1366px)';
-const _onPhone = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
+const PHONE_EXCLUSIVE_QUERY = '(max-width: 760px), (max-width: 960px) and (max-height: 520px)';
+const _onPhone = window.matchMedia(PHONE_EXCLUSIVE_QUERY).matches;
 const WW = _onPhone ? 15 : 20;
 const WH = _onPhone ? 96 : 130;
 const BW = _onPhone ? 10 : 13;
@@ -6253,7 +6254,7 @@ loadVerovio();
 // ════════════════════════════════════════════════════
 
 // Uses matchMedia so it always agrees with the CSS breakpoint
-const phoneQuery = window.matchMedia(MOBILE_LAYOUT_QUERY);
+const phoneQuery = window.matchMedia(PHONE_EXCLUSIVE_QUERY);
 function isPhone() { return phoneQuery.matches; }
 
 // ── Single note-panel collapse (whole bar at once) ────
