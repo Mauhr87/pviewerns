@@ -299,6 +299,24 @@ body {
   color: var(--accent);
   background: var(--accent-lt);
 }
+.measure-slider-clear {
+  display: none;
+  width: 100%;
+  min-height: 38px;
+  margin-top: 9px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.measure-slider-clear:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-lt);
+}
 
 .play-btn {
   width: 36px;
@@ -3213,6 +3231,7 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
       <button onclick="nudgeMeasureSlider(1)">+1</button>
       <button onclick="nudgeMeasureSlider(10)">+10</button>
     </div>
+    <button class="measure-slider-clear" id="measureSliderClear" onclick="clearMeasureEndFromSlider()">Sin fin</button>
   </div>
 </div>
 
@@ -3244,10 +3263,10 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
         readonly inputmode="none" onclick="openMeasureSlider(event)" onfocus="openMeasureSlider(event)"
         title="Toca para elegir compás con slider">
       <span class="range-sep">—</span>
-      <input type="number" class="measure-input" id="measureEnd" min="1"
+      <input type="number" class="measure-input slider-enabled" id="measureEnd" min="1"
         placeholder="fin" style="width:44px"
         title="Compás final del rango (opcional)"
-        onchange="onRangeEndChange()" onkeydown="if(event.key==='Enter')onRangeEndChange()">
+        readonly inputmode="none" onclick="openMeasureSlider(event, 'end')" onfocus="openMeasureSlider(event, 'end')">
       <span class="measure-total" id="measureTotal">/ —</span>
       <button class="nav-btn" id="btnNext" onclick="changeMeasure(1)" disabled title="Compás siguiente (Shift+→)">▶</button>
     </div>
@@ -3843,13 +3862,16 @@ function updateNav() {
   syncMeasureSliderUI();
 }
 
-function openMeasureSlider(event) {
+let measureSliderTarget = 'start';
+
+function openMeasureSlider(event, target = 'start') {
   event?.preventDefault();
   event?.stopPropagation();
   if (!songData) {
     showToast('Carga una pieza primero', true);
     return;
   }
+  measureSliderTarget = target === 'end' ? 'end' : 'start';
   closeMobExtras();
   syncMeasureSliderUI();
   document.getElementById('measureSliderOverlay')?.classList.add('open');
@@ -3868,18 +3890,38 @@ function syncMeasureSliderUI() {
   const range = document.getElementById('measureSliderRange');
   const current = document.getElementById('measureSliderCurrent');
   const totalLabel = document.getElementById('measureSliderTotal');
+  const title = document.getElementById('measureSliderTitle');
+  const clearBtn = document.getElementById('measureSliderClear');
   if (!range || !current || !totalLabel) return;
   const total = songData ? songData.measures.length : 1;
-  const value = Math.max(1, Math.min(total, currentMeasure || 1));
+  const isEnd = measureSliderTarget === 'end';
+  const min = isEnd ? Math.max(1, currentMeasure || 1) : 1;
+  const rawEnd = parseInt(document.getElementById('measureEnd')?.value || '', 10);
+  const value = isEnd
+    ? Math.max(min, Math.min(total, Number.isFinite(rawEnd) ? rawEnd : min))
+    : Math.max(1, Math.min(total, currentMeasure || 1));
+  range.min = String(min);
   range.max = String(total);
   range.value = String(value);
   current.textContent = String(value);
   totalLabel.textContent = `/ ${total || '—'}`;
+  if (title) title.textContent = isEnd ? 'Seleccionar compás final' : 'Seleccionar compás';
+  if (clearBtn) clearBtn.style.display = isEnd ? 'block' : 'none';
 }
 
 function setMeasureFromSlider(value) {
   if (!songData) return;
   const total = songData.measures.length;
+  if (measureSliderTarget === 'end') {
+    const min = Math.max(1, currentMeasure || 1);
+    const next = Math.max(min, Math.min(total, Number(value) || min));
+    const endEl = document.getElementById('measureEnd');
+    if (endEl) endEl.value = String(next);
+    onRangeEndChange();
+    syncMeasureSliderUI();
+    saveState();
+    return;
+  }
   const next = Math.max(1, Math.min(total, Number(value) || currentMeasure || 1));
   if (next !== currentMeasure) goToMeasure(next);
   else syncMeasureSliderUI();
@@ -3889,6 +3931,14 @@ function nudgeMeasureSlider(delta) {
   const range = document.getElementById('measureSliderRange');
   const base = Number(range?.value) || currentMeasure || 1;
   setMeasureFromSlider(base + delta);
+}
+
+function clearMeasureEndFromSlider() {
+  const endEl = document.getElementById('measureEnd');
+  if (endEl) endEl.value = '';
+  syncMeasureSliderUI();
+  saveState();
+  closeMeasureSlider();
 }
 
 function scrollToActive() {
