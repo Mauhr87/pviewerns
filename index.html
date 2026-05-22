@@ -1284,12 +1284,12 @@ body {
 }
 #notePanelOverlay.open { display: block; }
 
-/* ══ PHONE (touch device, viewport ≤960px) ══════════
-   Cubre teléfonos en landscape/portrait (S25 Ultra ~820px).
-   No activa en tablets grandes (Lenovo landscape ~1280px).
+/* ══ MOBILE/TABLET (viewport ≤1366px) ══════════
+   Cubre telefonos y tablets en landscape/portrait.
+   Activa tambien en tablets grandes (Lenovo/iPad landscape ~1280px).
    Hides bb-left + bb-right, collapses panels,
    adds mobile-extras popup for secondary controls.   */
-@media (pointer: coarse) and (max-width: 960px) {
+@media (max-width: 1366px) {
 
   /* Hide secondary bottom-bar columns */
   .bb-left  { display: none !important; }
@@ -2485,7 +2485,7 @@ select {
   }
 }
 
-@media (pointer: coarse) and (max-width: 960px), (max-width: 760px) {
+@media (max-width: 1366px) {
   body {
     height: 100dvh;
   }
@@ -3216,7 +3216,8 @@ if (sessionStorage.getItem(SESSION_KEY) === '1') {
 // ════════════════════════════════════════════════════
 // Piano key dimensions — smaller on phone so all 88 keys fit in landscape
 // 52 white keys × 15px = 780px → fits S25 Ultra landscape (~820px)
-const _onPhone = window.matchMedia('(pointer: coarse) and (max-width: 960px)').matches;
+const MOBILE_LAYOUT_QUERY = '(max-width: 1366px)';
+const _onPhone = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
 const WW = _onPhone ? 15 : 20;
 const WH = _onPhone ? 96 : 130;
 const BW = _onPhone ? 10 : 13;
@@ -4333,13 +4334,7 @@ function stopPlay(resetToStart = false) {
   if (followPlaying || followPaused) {
     followPlaying = false;
     followPaused  = false;
-    pressedNotes.clear();
-    correctNotes.clear();
-    if (followTimer) { clearTimeout(followTimer); followTimer = null; }
-    heldFromPrevStep.clear();
-    Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
-    document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
-    clearHL();
+    resetFollowInputState({ clearHighlights: true });
   }
   // ── Stop audio playback ───────────────────────────────
   isPlaying   = false;
@@ -4361,6 +4356,10 @@ function stopPlay(resetToStart = false) {
 
 // ── Follow play session ───────────────────────────────
 function startFollowPlay() {
+  if (!ensureActiveMIDIHandler()) {
+    showToast('Conecta un dispositivo MIDI para usar el seguimiento', true);
+    return;
+  }
   const total  = songData ? songData.measures.length : 1;
   const endVal = parseInt(document.getElementById('measureEnd').value);
 
@@ -4370,13 +4369,7 @@ function startFollowPlay() {
                   : Math.max(currentMeasure, Math.min(endVal, total));
   followPlaying = true;
 
-  pressedNotes.clear();
-  correctNotes.clear();
-  heldFromPrevStep.clear();
-  Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
-  if (followTimer) { clearTimeout(followTimer); followTimer = null; }
-  document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
-  clearHL();
+  resetFollowInputState({ clearHighlights: true });
 
   // Ensure step-by-step mode (required for note-by-note advance)
   if (!sequenceMode) {
@@ -4815,6 +4808,26 @@ let correctNotes  = new Set();  // notes pressed correctly in this step
 let heldFromPrevStep = new Set(); // notes held over from previous step — must release+repress
 let releaseTimers   = {};           // delayed removal from heldFromPrevStep (Casio retrigger guard)
 
+function resetFollowInputState(options = {}) {
+  const { clearHighlights = false } = options;
+  pressedNotes.clear();
+  correctNotes.clear();
+  heldFromPrevStep.clear();
+  if (followTimer) { clearTimeout(followTimer); followTimer = null; }
+  Object.values(releaseTimers).forEach(t => clearTimeout(t));
+  releaseTimers = {};
+  document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
+  if (clearHighlights) clearHL();
+}
+
+function ensureActiveMIDIHandler() {
+  if (!midiInput) return false;
+  midiInput.onmidimessage = onMIDIMessage;
+  updateMIDIDot(true);
+  updateFollowBtn();
+  return true;
+}
+
 async function initMIDI() {
   if (!navigator.requestMIDIAccess) return; // unsupported browser
   try {
@@ -5002,13 +5015,7 @@ function pauseFollowPlay() {
   pausedStep    = currentStep;
   followPlaying = false;
   followPaused  = true;
-  // Clear MIDI state
-  pressedNotes.clear();
-  correctNotes.clear();
-  if (followTimer) { clearTimeout(followTimer); followTimer = null; }
-  heldFromPrevStep.clear();
-  Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
-  document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
+  resetFollowInputState({ clearHighlights: false });
   // Keep piano highlighted (don't clearHL) so user sees where they left off
   // Update UI
   document.getElementById('playBtn').innerHTML = '▶';
@@ -5020,13 +5027,8 @@ function resumeFollowPlay() {
   if (!followPaused) return;
   followPaused  = false;
   followPlaying = true;
-  // Clear MIDI carry-over
-  pressedNotes.clear();
-  correctNotes.clear();
-  if (followTimer) { clearTimeout(followTimer); followTimer = null; }
-  heldFromPrevStep.clear();
-  Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
-  document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
+  ensureActiveMIDIHandler();
+  resetFollowInputState({ clearHighlights: false });
   // Restore paused position
   goToMeasure(pausedMeasure);
   highlight(pausedMeasure - 1);
@@ -5083,11 +5085,7 @@ function doFollowAdvance() {
   } else {
     if (loopEnabled) {
       // Restart from the configured start measure — keep followPlaying = true
-      correctNotes.clear();
-      heldFromPrevStep.clear();
-      Object.values(releaseTimers).forEach(t => clearTimeout(t)); releaseTimers = {};
-      if (followTimer) { clearTimeout(followTimer); followTimer = null; }
-      document.querySelectorAll('.hl-correct').forEach(el => el.classList.remove('hl-correct'));
+      resetFollowInputState({ clearHighlights: false });
       goToMeasure(followStart);
       highlight(followStart - 1);
       showToast('🔁 ¡Bien hecho! Reiniciando desde compás ' + followStart);
@@ -5205,7 +5203,7 @@ document.addEventListener('fullscreenchange', () => {
   const WELCOME_KEY = 'pv_welcome_seen_v1';
   if (localStorage.getItem(WELCOME_KEY) === '1') return;
   const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-                   || ('ontouchstart' in window && window.innerWidth < 1024);
+                   || ('ontouchstart' in window && window.innerWidth <= 1366);
   if (!isMobile) return;
 
   window.dismissWelcomeModal = function(enterFullscreen) {
@@ -6255,7 +6253,7 @@ loadVerovio();
 // ════════════════════════════════════════════════════
 
 // Uses matchMedia so it always agrees with the CSS breakpoint
-const phoneQuery = window.matchMedia('(pointer: coarse) and (max-width: 960px)');
+const phoneQuery = window.matchMedia(MOBILE_LAYOUT_QUERY);
 function isPhone() { return phoneQuery.matches; }
 
 // ── Single note-panel collapse (whole bar at once) ────
