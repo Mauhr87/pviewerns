@@ -6263,6 +6263,126 @@ function toggleNotation() {
   }
 }
 
+// ── Beam injection ────────────────────────────────────
+// Verovio respeta los <beam> del MusicXML. Si el archivo no los tiene (o
+// los tiene incorrectos), las notas aparecen con corchetes individuales.
+// Esta función los inyecta correctamente según la firma de tiempo.
+function addBeamsToMusicXML(xmlStr) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlStr, 'application/xml');
+    if (doc.querySelector('parsererror')) return xmlStr;
+
+    doc.querySelectorAll('part').forEach(part => {
+      let divisions = 1;
+      let beatTicks = 1;  // ticks por tiempo (= una negra por defecto)
+
+      part.querySelectorAll('measure').forEach(measure => {
+        // Actualizar divisions si cambia en este compás
+        const divEl = measure.querySelector('attributes > divisions');
+        if (divEl) divisions = Math.max(1, parseInt(divEl.textContent) || 1);
+
+        // beat-type: 4=negra, 8=corchea... beatTicks = divisions * 4 / beatType
+        const btEl = measure.querySelector('attributes > time > beat-type');
+        if (btEl) beatTicks = Math.round(divisions * 4 / (parseInt(btEl.textContent) || 4));
+        else       beatTicks = divisions;
+
+        // Recorrer notas del compás y recopilar por voz
+        const byVoice = new Map();
+        let pos = 0, lastPos = 0;
+
+        for (const child of Array.from(measure.children)) {
+          const tag = child.tagName;
+          if (tag === 'backup') {
+            pos = Math.max(0, pos - (parseInt(child.querySelector('duration')?.textContent) || 0));
+          } else if (tag === 'forward') {
+            pos += parseInt(child.querySelector('duration')?.textContent) || 0;
+          } else if (tag === 'note') {
+            const isChord = !!child.querySelector('chord');
+            const isRest  = !!child.querySelector('rest');
+            const isGrace = !!child.querySelector('grace');
+            const dur     = parseInt(child.querySelector('duration')?.textContent || '0');
+            const voice   = child.querySelector('voice')?.textContent || '1';
+            const notePos = isChord ? lastPos : pos;
+
+            if (!byVoice.has(voice)) byVoice.set(voice, []);
+            if (!isRest && !isGrace) byVoice.get(voice).push({ note: child, pos: notePos, dur, isChord });
+
+            if (!isChord) { lastPos = pos; pos += dur; }
+          }
+        }
+
+        // Para cada voz, eliminar beams viejos e inyectar nuevos
+        byVoice.forEach(items => {
+          // Borrar beams existentes (pueden estar mal)
+          items.forEach(({ note }) => Array.from(note.querySelectorAll('beam')).forEach(b => b.remove()));
+
+          // Sólo procesar notas principales (no chord-notes: comparten plica)
+          const stems = items.filter(i => !i.isChord);
+
+          let group = [], groupBeat = -1;
+          const flush = () => { if (group.length >= 2) _applyBeamGroup(group, beatTicks, doc); group = []; groupBeat = -1; };
+
+          stems.forEach(item => {
+            if (item.dur >= beatTicks) { flush(); return; }   // negra o mayor: no agrupa
+            const beat = Math.floor(item.pos / beatTicks);
+            if (group.length && beat !== groupBeat) flush();
+            group.push(item);
+            groupBeat = beat;
+          });
+          flush();
+        });
+      });
+    });
+
+    return new XMLSerializer().serializeToString(doc);
+  } catch (e) {
+    console.warn('addBeamsToMusicXML error:', e);
+    return xmlStr;
+  }
+}
+
+function _applyBeamGroup(group, beatTicks, doc) {
+  const n = group.length;
+
+  // Beam 1 — para todas las notas del grupo (corcheas y menores)
+  group.forEach((item, i) => {
+    _insertBeam(item.note, 1, i === 0 ? 'begin' : i === n - 1 ? 'end' : 'continue', doc);
+  });
+
+  // Beam 2 — para semicorcheas (dur ≤ beatTicks/2) y menores
+  const tick16 = Math.round(beatTicks / 2);
+  const tick32 = Math.round(beatTicks / 4);
+  _applySubBeam(group, 2, tick16, doc);
+  _applySubBeam(group, 3, tick32, doc);
+}
+
+// Agrupa runs de notas con dur ≤ maxDur y les pone beam número `num`
+function _applySubBeam(group, num, maxDur, doc) {
+  let run = [];
+  const flush = () => {
+    if (run.length >= 2) {
+      run.forEach((item, i) => _insertBeam(item.note, num,
+        i === 0 ? 'begin' : i === run.length - 1 ? 'end' : 'continue', doc));
+    } else if (run.length === 1) {
+      _insertBeam(run[0].note, num, 'forward hook', doc);
+    }
+    run = [];
+  };
+  group.forEach(item => { if (item.dur <= maxDur) run.push(item); else flush(); });
+  flush();
+}
+
+function _insertBeam(noteEl, number, value, doc) {
+  const beam = doc.createElement('beam');
+  beam.setAttribute('number', String(number));
+  beam.textContent = value;
+  // Insertar antes de <notations> o <lyric> si existen, si no al final
+  const ref = noteEl.querySelector('notations') || noteEl.querySelector('lyric');
+  if (ref) noteEl.insertBefore(beam, ref);
+  else noteEl.appendChild(beam);
+}
+
 // ── Render full score ─────────────────────────────────
 function renderNotation() {
   if (!vrvToolkit || !rawMusicXML) return;
@@ -6288,7 +6408,9 @@ function renderNotation() {
         mnumInterval:     1,       // show measure number on every measure
       });
 
-      vrvToolkit.loadData(rawMusicXML);
+      // Inyectar beams correctos antes de pasar a Verovio
+      const beamedXML = addBeamsToMusicXML(rawMusicXML);
+      vrvToolkit.loadData(beamedXML);
       const svg = vrvToolkit.renderToSVG(1, {});
       document.getElementById('notationSVG').innerHTML = svg;
       document.getElementById('notationMsg').style.display = 'none';
@@ -6346,7 +6468,7 @@ function printScore() {
         xmlIdSeed:        0,
         mnumInterval:     1,
       });
-      vrvToolkit.loadData(rawMusicXML);
+      vrvToolkit.loadData(addBeamsToMusicXML(rawMusicXML));
 
       const pageCount = vrvToolkit.getPageCount();
       const title     = songData?.title || 'Partitura';
