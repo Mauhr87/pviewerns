@@ -103,6 +103,7 @@ let backingGain     = null;   // GainNode
 let backingVolume   = parseFloat(localStorage.getItem('pianoBackingVolume') ?? '0.8');
 let backingOffsetSec = 0;     // seconds of intro before piano enters
 let backingOriginalBpm = 0;   // BPM when backing was loaded (0 = not set)
+let pieceOriginalBpm   = 120; // original BPM of the loaded piece (for tempo Reset)
 let measureStartBeats = [];   // cumulative beat-position for each measure (multiply by beatSec)
 let backingEnabled  = true;   // backing on/off (when file loaded)
 let backingPreviewing = false;
@@ -1575,12 +1576,23 @@ function onLoaded(data, filename, options = {}) {
 
   // Tempo: set input to original BPM (clamped), show reference
   if (data.origBpm && data.origBpm >= 20 && data.origBpm <= 400) {
+    pieceOriginalBpm = data.origBpm;
     document.getElementById('tempoInput').value = data.origBpm;
     document.getElementById('tempoOrig').textContent = '♩=' + data.origBpm;
+    const origMob = document.getElementById('tempoOrigMob');
+    if (origMob) origMob.textContent = '♩=' + data.origBpm;
   } else {
+    pieceOriginalBpm = 120;
     document.getElementById('tempoInput').value = 120;
     document.getElementById('tempoOrig').textContent = '';
+    const origMob = document.getElementById('tempoOrigMob');
+    if (origMob) origMob.textContent = '';
   }
+  // Propagate the loaded tempo to every BPM display (mobile inputs + slider),
+  // so the bottom bar shows the correct value immediately without opening the slider.
+  syncBpmSliderUI();
+  const _tMob = document.getElementById('tempoInputMob');
+  if (_tMob) _tMob.value = document.getElementById('tempoInput').value;
 
   // Restore last session for this song (overrides the defaults set above)
   const restored = restoreState(data.title);
@@ -1766,9 +1778,27 @@ function resetFollowInputState(options = {}) {
   if (clearHighlights) clearHL();
 }
 
+// Bind (or re-bind) the active MIDI handler. Web MIDI ports can silently fall
+// into a "closed"/"pending" connection state — re-assigning onmidimessage alone
+// does NOT reliably reopen them in Chrome. Calling port.open() forces the port
+// back to "open" so messages keep flowing after stop→play cycles.
+function bindMidiInput(port) {
+  if (!port) return;
+  port.onmidimessage = onMIDIMessage;
+  try {
+    // open() returns a promise; if it rejects we still have the handler bound.
+    const p = port.open?.();
+    if (p && typeof p.then === 'function') p.catch(() => {});
+  } catch (e) { /* open() unsupported or already open — ignore */ }
+}
+
 function ensureActiveMIDIHandler() {
   if (!midiInput) return false;
-  midiInput.onmidimessage = onMIDIMessage;
+  // Re-resolve the port from midiAccess in case the underlying object changed.
+  if (midiAccess && midiAccess.inputs.has(midiInput.id)) {
+    midiInput = midiAccess.inputs.get(midiInput.id);
+  }
+  bindMidiInput(midiInput);
   updateMIDIDot(true);
   updateFollowBtn();
   return true;
@@ -1896,7 +1926,15 @@ function refreshMIDIDevices() {
   if (inputs.length === 1) {
     if (sel)    sel.value    = inputs[0].id;
     if (mobSel) mobSel.value = inputs[0].id;
-    selectMIDIDevice(inputs[0].id);
+    // Already on this device: just re-open/re-bind (don't tear down mid-session).
+    if (midiInput && midiInput.id === inputs[0].id) {
+      midiInput = inputs[0];
+      bindMidiInput(midiInput);
+      updateMIDIDot(true);
+      updateFollowBtn();
+    } else {
+      selectMIDIDevice(inputs[0].id);
+    }
   } else if (midiInput && midiAccess.inputs.has(midiInput.id)) {
     if (sel)    sel.value    = midiInput.id;
     if (mobSel) mobSel.value = midiInput.id;
@@ -1912,7 +1950,7 @@ function selectMIDIDevice(id) {
 
   midiInput = midiAccess.inputs.get(id);
   if (midiInput) {
-    midiInput.onmidimessage = onMIDIMessage;
+    bindMidiInput(midiInput);
     updateMIDIDot(true);
     showToast('🎹 ' + midiInput.name + ' conectado');
   }
@@ -3672,6 +3710,15 @@ function nudgeBpmSlider(delta) {
   setBpmFromSlider(cur + delta);
   const range = document.getElementById('bpmSliderRange');
   if (range) range.value = String(Math.max(20, Math.min(400, cur + delta)));
+}
+
+// Reset tempo to the loaded piece's original BPM
+function resetBpmSlider() {
+  const orig = Math.max(20, Math.min(400, pieceOriginalBpm || 120));
+  setBpmFromSlider(orig);
+  const range = document.getElementById('bpmSliderRange');
+  if (range) range.value = String(orig);
+  showToast('↺ Tempo restablecido a ' + orig + ' BPM');
 }
 
 // Keep mob input in sync whenever tempoInput changes

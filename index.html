@@ -345,10 +345,9 @@
     <input type="range" class="measure-slider-range" id="bpmSliderRange" min="20" max="400" value="120"
       oninput="setBpmFromSlider(this.value)" onchange="setBpmFromSlider(this.value)">
     <div class="measure-slider-actions">
-      <button onclick="nudgeBpmSlider(-20)">-20</button>
       <button onclick="nudgeBpmSlider(-5)">-5</button>
       <button onclick="nudgeBpmSlider(5)">+5</button>
-      <button onclick="nudgeBpmSlider(20)">+20</button>
+      <button onclick="resetBpmSlider()" title="Restablecer al tempo original de la pieza">↺ Reset</button>
     </div>
   </div>
 </div>
