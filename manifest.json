@@ -2,7 +2,7 @@
   "name": "KeyPlay",
   "short_name": "KeyPlay",
   "description": "Visor de partituras de piano",
-  "start_url": "/keyplay/",
+  "start_url": "/pviewerns/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f5f3ef",

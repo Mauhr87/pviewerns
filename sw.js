@@ -1,5 +1,5 @@
 const CACHE = 'keyplay-v1';
-const BASE = '/keyplay';
+const BASE = '/pviewerns';
 const ASSETS = [
   `${BASE}/`,
   `${BASE}/index.html`,
