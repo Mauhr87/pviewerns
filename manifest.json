@@ -4,7 +4,7 @@
   "description": "Visor de partituras de piano",
   "start_url": "/pviewerns/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "landscape",
   "background_color": "#f5f3ef",
   "theme_color": "#5b21b6",
   "lang": "es",
