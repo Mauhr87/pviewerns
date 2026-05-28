@@ -1964,6 +1964,21 @@ body {
 .settings-row-sub {
   font-size: 11px; color: var(--text-dim); margin-top: 2px; font-weight: 400;
 }
+.settings-action-btn {
+  flex-shrink: 0;
+  background: var(--accent-b);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
+}
+.settings-action-btn:hover  { opacity: 0.85; }
+.settings-action-btn:active { transform: translateY(1px); }
 
 .toggle-switch {
   position: relative; width: 44px; height: 24px; flex-shrink: 0;
