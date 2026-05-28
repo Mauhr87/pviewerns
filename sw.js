@@ -1,4 +1,4 @@
-const CACHE = 'keyplay-v2';
+const CACHE = 'keyplay-v3';
 const BASE = '/pviewerns';
 const ASSETS = [
   `${BASE}/`,
