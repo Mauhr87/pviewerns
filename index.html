@@ -7,7 +7,7 @@
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#5b21b6">
+  <meta name="theme-color" content="#0a3d6e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -19,30 +19,19 @@
 <body>
 
 <!-- ── PIN LOCK SCREEN ─────────────────────────────── -->
-<div id="pinScreen" style="
-  position:fixed;inset:0;z-index:9999;
-  background:linear-gradient(135deg,#0c4a82 0%,#0277b7 52%,#0c4a82 100%);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-">
-  <div style="text-align:center;">
-    <div style="font-size:52px;margin-bottom:12px;">🎹</div>
-    <div style="font-size:26px;font-weight:800;color:#fff;letter-spacing:-0.5px;">KeyPlay</div>
-    <div style="font-size:14px;color:rgba(255,255,255,0.45);margin-top:4px;">Ingresa tu PIN para continuar</div>
+<div id="pinScreen" class="pin-screen">
+  <!-- Title / branding -->
+  <div class="pin-title-block">
+    <img src="icons/icon-192.png" class="pin-logo-img" alt="KeyPlay">
+    <div class="pin-app-name">KeyPlay</div>
+    <div class="pin-subtitle">Ingresa tu PIN para continuar</div>
   </div>
 
-  <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);
-              border-radius:16px;padding:28px 32px;width:280px;display:flex;flex-direction:column;gap:16px;">
-
-    <!-- PIN dots display -->
-    <div id="pinDots" style="display:flex;justify-content:center;gap:12px;height:14px;align-items:center;">
-    </div>
-
-    <!-- Error message -->
-    <div id="pinError" style="text-align:center;font-size:12px;color:#f87171;min-height:16px;font-weight:500;"></div>
-
-    <!-- Number pad -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+  <!-- Card: dots + pad -->
+  <div class="pin-card">
+    <div id="pinDots" class="pin-dots"></div>
+    <div id="pinError" class="pin-error"></div>
+    <div class="pin-grid">
       <button class="pin-key" onclick="pinKey('1')">1</button>
       <button class="pin-key" onclick="pinKey('2')">2</button>
       <button class="pin-key" onclick="pinKey('3')">3</button>
@@ -52,7 +41,7 @@
       <button class="pin-key" onclick="pinKey('7')">7</button>
       <button class="pin-key" onclick="pinKey('8')">8</button>
       <button class="pin-key" onclick="pinKey('9')">9</button>
-      <button class="pin-key pin-del" onclick="pinDel()" style="font-size:18px;">⌫</button>
+      <button class="pin-key pin-del" onclick="pinDel()">⌫</button>
       <button class="pin-key" onclick="pinKey('0')">0</button>
       <button class="pin-key pin-ok" onclick="pinSubmit()">✓</button>
     </div>

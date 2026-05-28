@@ -2763,7 +2763,77 @@ select {
 }
 
 
-/* ── PIN KEY STYLES ── */
+/* ══ PIN SCREEN ══════════════════════════════════════ */
+.pin-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: linear-gradient(135deg, #0c4a82 0%, #0277b7 52%, #0c4a82 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+.pin-title-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.pin-logo-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+}
+.pin-app-name {
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+.pin-subtitle {
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 2px;
+}
+
+.pin-card {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 20px 24px;
+  width: 264px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  height: 14px;
+  align-items: center;
+}
+.pin-error {
+  text-align: center;
+  font-size: 12px;
+  color: #f87171;
+  min-height: 16px;
+  font-weight: 500;
+}
+.pin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* ── PIN keys ── */
 .pin-key {
   background: rgba(255,255,255,0.10);
   border: 1px solid rgba(255,255,255,0.15);
@@ -2771,7 +2841,7 @@ select {
   color: #fff;
   font-size: 20px;
   font-weight: 600;
-  height: 56px;
+  height: 52px;
   cursor: pointer;
   transition: background 0.12s, transform 0.08s;
   touch-action: manipulation;
@@ -2779,9 +2849,9 @@ select {
 }
 .pin-key:hover  { background: rgba(255,255,255,0.18); }
 .pin-key:active { background: rgba(255,255,255,0.25); transform: scale(0.94); }
-.pin-ok  { background: rgba(91,33,182,0.6) !important; border-color: rgba(139,92,246,0.5) !important; }
-.pin-ok:hover { background: rgba(91,33,182,0.8) !important; }
-.pin-del { background: rgba(255,255,255,0.06) !important; }
+.pin-ok  { background: rgba(2,119,183,0.7) !important; border-color: rgba(100,200,255,0.4) !important; }
+.pin-ok:hover { background: rgba(2,119,183,0.9) !important; }
+.pin-del { background: rgba(255,255,255,0.06) !important; font-size: 18px; }
 
 @keyframes pinShake {
   0%,100% { transform: translateX(0); }
@@ -2789,6 +2859,37 @@ select {
   40%,80%  { transform: translateX(8px); }
 }
 .pin-shake { animation: pinShake 0.35s ease; }
+
+/* ── Landscape: side-by-side layout ── */
+@media (orientation: landscape) and (max-height: 600px) {
+  .pin-screen {
+    flex-direction: row;
+    gap: 32px;
+    padding: 16px 40px;
+    justify-content: center;
+    align-items: center;
+  }
+  .pin-title-block {
+    flex-shrink: 0;
+  }
+  .pin-logo-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+    margin-bottom: 6px;
+  }
+  .pin-app-name { font-size: 22px; }
+  .pin-card {
+    padding: 14px 18px;
+    width: 240px;
+    gap: 8px;
+  }
+  .pin-key {
+    height: 44px;
+    font-size: 18px;
+  }
+  .pin-grid { gap: 6px; }
+}
 
 /* ══ BPM MOB CONTROL ══════════════════════════════════
    Visible only on mobile/tablet (hidden on desktop).
