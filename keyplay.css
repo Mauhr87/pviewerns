@@ -1099,6 +1099,26 @@ body {
 }
 .midi-select:focus { border-color: #10b981; }
 
+.midi-refresh-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
+  padding: 5px 9px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.midi-refresh-btn:hover { border-color: var(--accent-b); color: var(--accent-b); }
+.midi-refresh-btn:active { background: var(--surface-t); }
+.bottom-bar .midi-refresh-btn {
+  background: rgba(255,255,255,0.72);
+  border-color: rgba(0,0,0,0.15);
+  color: #1c1917;
+}
+
 .follow-btn {
   display: flex;
   align-items: center;

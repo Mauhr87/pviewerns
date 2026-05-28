@@ -298,6 +298,8 @@
       <select id="mobMidiSelect" class="midi-select"
         onchange="selectMIDIDevice(this.value)"
         style="flex:1;min-width:0;font-size:13px"></select>
+      <button type="button" class="midi-refresh-btn" onclick="refreshMidiConnection()"
+        title="Volver a detectar el piano (úsalo si no responde tras desbloquear la tablet o al abrir la app con el cable ya conectado)">↻</button>
     </div>
   
   <div class="mob-extras-section" id="mobBackingSection">
@@ -459,6 +461,8 @@
       <span class="midi-dot" id="midiDot"></span>
       <select id="midiSelect" class="midi-select" onchange="selectMIDIDevice(this.value)"
         title="Dispositivo MIDI"></select>
+      <button type="button" class="midi-refresh-btn" onclick="refreshMidiConnection()"
+        title="Volver a detectar el piano (úsalo si no responde tras desbloquear o al abrir con el cable ya conectado)">↻</button>
     </div>
   </div>
 

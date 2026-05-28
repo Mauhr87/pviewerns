@@ -1786,32 +1786,10 @@ function bindMidiInput(port) {
   if (!port) return;
   port.onmidimessage = onMIDIMessage;
   try {
-    // open() returns a promise; re-assign the handler AFTER it resolves because
-    // some implementations clear onmidimessage while the port transitions to
-    // "open". If open() rejects we still have the synchronous handler bound.
+    // open() returns a promise; if it rejects we still have the handler bound.
     const p = port.open?.();
-    if (p && typeof p.then === 'function') {
-      p.then(() => { port.onmidimessage = onMIDIMessage; })
-       .catch(() => {});
-    }
+    if (p && typeof p.then === 'function') p.catch(() => {});
   } catch (e) { /* open() unsupported or already open — ignore */ }
-}
-
-// Re-resolve and reopen the currently selected MIDI port. Called when the page
-// becomes visible again (tablet unlock / app foreground): the OS closes MIDI
-// ports while suspended, leaving them "closed" with no statechange on resume.
-function reopenActiveMIDI() {
-  if (!midiAccess) return;
-  const inputs = Array.from(midiAccess.inputs.values());
-  if (!inputs.length) { refreshMIDIDevices(); return; }
-  // Prefer the previously selected port; otherwise fall back to the only device.
-  let port = (midiInput && midiAccess.inputs.get(midiInput.id))
-             || (inputs.length === 1 ? inputs[0] : null);
-  if (!port) return;
-  midiInput = port;
-  bindMidiInput(midiInput);
-  updateMIDIDot(true);
-  updateFollowBtn();
 }
 
 function ensureActiveMIDIHandler() {
@@ -1905,20 +1883,50 @@ async function initMIDI() {
   if (!navigator.requestMIDIAccess) return; // unsupported browser
   try {
     midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+    refreshMIDIDevices();
+    midiAccess.onstatechange = refreshMIDIDevices;
+  } catch(e) { /* user denied permission — silently skip */ }
+}
+
+// Manual MIDI refresh — triggered by the ↻ button next to the device selector.
+// Use cases: app launched with the cable already plugged in (port not detected),
+// or the tablet was locked/unlocked (OS closed the port without a statechange).
+// Only runs on user click, so normal stop→play usage is never affected.
+async function refreshMidiConnection() {
+  if (!navigator.requestMIDIAccess) {
+    showToast('Este navegador no soporta MIDI', true);
+    return;
+  }
+  if (localStorage.getItem('pv_midi') !== 'on') {
+    showToast('Activa el MIDI en Ajustes primero', true);
+    return;
+  }
+  const prevId = midiInput ? midiInput.id : null;
+  try {
+    // Re-request access to force a fresh, current view of the device list.
+    midiAccess = await navigator.requestMIDIAccess({ sysex: false });
     midiAccess.onstatechange = refreshMIDIDevices;
     refreshMIDIDevices();
-    // If a device is already plugged in at launch, the inputs list is sometimes
-    // still empty (or the port is "pending") when requestMIDIAccess resolves.
-    // Retry a couple of times so a pre-connected cable is detected without
-    // having to unplug/replug it.
-    let tries = 0;
-    const retry = setInterval(() => {
-      tries++;
-      const hasInput = midiAccess && midiAccess.inputs.size > 0;
-      if (hasInput) { refreshMIDIDevices(); }
-      if (hasInput || tries >= 6) clearInterval(retry); // ~3s max
-    }, 500);
-  } catch(e) { /* user denied permission — silently skip */ }
+
+    const inputs = Array.from(midiAccess.inputs.values());
+    if (!inputs.length) {
+      showToast('No se detectó ningún piano MIDI. Revisa el cable.', true);
+      return;
+    }
+    // Reconnect to the same device if still present, else the only/first one.
+    const target = (prevId && midiAccess.inputs.get(prevId)) || inputs[0];
+    const sel    = document.getElementById('midiSelect');
+    const mobSel = document.getElementById('mobMidiSelect');
+    if (sel)    sel.value    = target.id;
+    if (mobSel) mobSel.value = target.id;
+    midiInput = target;
+    bindMidiInput(midiInput);
+    updateMIDIDot(true);
+    updateFollowBtn();
+    showToast('🎹 ' + midiInput.name + ' reconectado');
+  } catch (e) {
+    showToast('No se pudo reconectar el MIDI', true);
+  }
 }
 
 function refreshMIDIDevices() {
@@ -2250,20 +2258,6 @@ function onMidiToggleChange(enabled) {
   if (tog) tog.checked = enabled;
   if (enabled) initMIDI();
 })();
-
-// Reopen the MIDI port when the app returns to the foreground. While a tablet is
-// locked/backgrounded the OS closes MIDI ports without firing a statechange, so
-// on resume we re-resolve and re-open the active port instead of needing a
-// physical unplug/replug.
-function handleMIDIResume() {
-  if (localStorage.getItem('pv_midi') !== 'on') return;
-  if (document.visibilityState === 'hidden') return;
-  if (!midiAccess) { initMIDI(); return; }
-  reopenActiveMIDI();
-}
-document.addEventListener('visibilitychange', handleMIDIResume);
-window.addEventListener('pageshow', handleMIDIResume);
-window.addEventListener('focus', handleMIDIResume);
 
 // ════════════════════════════════════════════════════
 //  PIANO VISIBILITY TOGGLE
