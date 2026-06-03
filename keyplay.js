@@ -1,76 +1,3 @@
-// ── PIN AUTH ─────────────────────────────────────────
-const PIN_HASH = '75ecfe343389accb161d946713b42f407bd06d3114e20f9a0b727186c0f17034';
-const SESSION_KEY = 'kp_auth';
-let pinBuffer = '';
-
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256',
-    new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-function renderDots() {
-  const el = document.getElementById('pinDots');
-  el.innerHTML = '';
-  for (let i = 0; i < 8; i++) {
-    const d = document.createElement('div');
-    d.style.cssText = `
-      width:12px;height:12px;border-radius:50%;transition:background 0.15s,transform 0.15s;
-      background:${i < pinBuffer.length ? '#a78bfa' : 'rgba(255,255,255,0.2)'};
-      transform:${i < pinBuffer.length ? 'scale(1.15)' : 'scale(1)'};
-    `;
-    el.appendChild(d);
-  }
-}
-
-function pinKey(k) {
-  if (pinBuffer.length >= 8) return;
-  pinBuffer += k;
-  document.getElementById('pinError').textContent = '';
-  renderDots();
-  if (pinBuffer.length === 8) setTimeout(pinSubmit, 180);
-}
-
-function pinDel() {
-  pinBuffer = pinBuffer.slice(0, -1);
-  renderDots();
-}
-
-async function pinSubmit() {
-  if (!pinBuffer.length) return;
-  const hash = await sha256(pinBuffer);
-  if (hash === PIN_HASH) {
-    sessionStorage.setItem(SESSION_KEY, '1');
-    const screen = document.getElementById('pinScreen');
-    screen.style.transition = 'opacity 0.3s';
-    screen.style.opacity = '0';
-    setTimeout(() => screen.remove(), 300);
-  } else {
-    pinBuffer = '';
-    renderDots();
-    const box = document.querySelector('#pinScreen > div:nth-child(2)');
-    document.getElementById('pinError').textContent = 'PIN incorrecto, intenta de nuevo';
-    box.classList.remove('pin-shake');
-    void box.offsetWidth;
-    box.classList.add('pin-shake');
-  }
-}
-
-// Keyboard support
-document.addEventListener('keydown', e => {
-  if (!document.getElementById('pinScreen')) return;
-  if (e.key >= '0' && e.key <= '9') pinKey(e.key);
-  else if (e.key === 'Backspace') pinDel();
-  else if (e.key === 'Enter') pinSubmit();
-});
-
-// Check session — skip PIN if already authenticated this session
-if (sessionStorage.getItem(SESSION_KEY) === '1') {
-  document.getElementById('pinScreen').remove();
-} else {
-  renderDots();
-}
-
 // ════════════════════════════════════════════════════
 //  CONSTANTS & STATE
 // ════════════════════════════════════════════════════
@@ -1765,7 +1692,6 @@ let lastFollowErrorSoundAt = 0;
 let incompleteChordTimer = null;
 const INCOMPLETE_CHORD_GRACE_MS = 700;
 const MIDI_STATE_REFRESH_DEBOUNCE_MS = 400;
-const MIDI_ACTIVE_PORT_GRACE_MS = 2500;
 const PEDAL_DOWN_THRESHOLD = 1;
 const PEDAL_CC_SUSTAIN = 64;   // right pedal: sustain, no app action
 const PEDAL_CC_SOSTENUTO = 66; // middle pedal: next step
@@ -1887,13 +1813,10 @@ function playFollowErrorSound() {
 }
 
 let _midiRefreshTimer = null;
-let _activeMidiStateTimer = null;
 
 function clearMidiStateTimers() {
   clearTimeout(_midiRefreshTimer);
-  clearTimeout(_activeMidiStateTimer);
   _midiRefreshTimer = null;
-  _activeMidiStateTimer = null;
 }
 
 function debouncedRefreshMIDIDevices(options = {}) {
@@ -1901,33 +1824,15 @@ function debouncedRefreshMIDIDevices(options = {}) {
   _midiRefreshTimer = setTimeout(() => refreshMIDIDevices(options), MIDI_STATE_REFRESH_DEBOUNCE_MS);
 }
 
-function validateActiveMIDIState(portId) {
-  clearTimeout(_activeMidiStateTimer);
-  _activeMidiStateTimer = setTimeout(() => {
-    _activeMidiStateTimer = null;
-    if (!midiAccess || !midiInput || midiInput.id !== portId) return;
-    const activePort = midiAccess.inputs.get(portId);
-    if (activePort && activePort.state !== 'disconnected') {
-      updateMIDIDot(true);
-      updateFollowBtn();
-      return;
-    }
-    refreshMIDIDevices({ preserveActive: false });
-  }, MIDI_ACTIVE_PORT_GRACE_MS);
-}
-
 // The Casio AP-470 can emit Web MIDI statechange events on every pedal press.
-// Treat statechanges for the selected input as transient first; reconnect only
-// if the port is still missing after the grace period. Manual refresh remains
-// immediate via the refresh button.
+// Once a piano is selected, ignore those browser statechange events entirely:
+// no refresh, no re-open, no reconnect.
 function handleMIDIStateChange(e) {
   if (localStorage.getItem('pv_midi') !== 'on') return;
   const port = e?.port;
 
-  if (port?.type === 'input' && midiInput && port.id === midiInput.id) {
-    validateActiveMIDIState(port.id);
-    return;
-  }
+  if (midiInput) return;
+  if (port?.type !== 'input') return;
 
   debouncedRefreshMIDIDevices({ preserveActive: true });
 }
@@ -1940,48 +1845,6 @@ async function initMIDI() {
     refreshMIDIDevices();
     midiAccess.onstatechange = handleMIDIStateChange;
   } catch(e) { /* user denied permission — silently skip */ }
-}
-
-// Manual MIDI refresh — triggered by the ↻ button next to the device selector.
-// Use cases: app launched with the cable already plugged in (port not detected),
-// or the tablet was locked/unlocked (OS closed the port without a statechange).
-// Only runs on user click, so normal stop→play usage is never affected.
-async function refreshMidiConnection() {
-  if (!navigator.requestMIDIAccess) {
-    showToast('Este navegador no soporta MIDI', true);
-    return;
-  }
-  if (localStorage.getItem('pv_midi') !== 'on') {
-    showToast('Activa el MIDI en Ajustes primero', true);
-    return;
-  }
-  const prevId = midiInput ? midiInput.id : null;
-  try {
-    clearMidiStateTimers();
-    // Re-request access to force a fresh, current view of the device list.
-    midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-    midiAccess.onstatechange = handleMIDIStateChange;
-    refreshMIDIDevices();
-
-    const inputs = Array.from(midiAccess.inputs.values()).filter(inp => inp.state !== 'disconnected');
-    if (!inputs.length) {
-      showToast('No se detectó ningún piano MIDI. Revisa el cable.', true);
-      return;
-    }
-    // Reconnect to the same device if still present, else the only/first one.
-    const target = (prevId && midiAccess.inputs.get(prevId)) || inputs[0];
-    const sel    = document.getElementById('midiSelect');
-    const mobSel = document.getElementById('mobMidiSelect');
-    if (sel)    sel.value    = target.id;
-    if (mobSel) mobSel.value = target.id;
-    midiInput = target;
-    bindMidiInput(midiInput);
-    updateMIDIDot(true);
-    updateFollowBtn();
-    showToast('🎹 ' + midiInput.name + ' reconectado');
-  } catch (e) {
-    showToast('No se pudo reconectar el MIDI', true);
-  }
 }
 
 function refreshMIDIDevices(options = {}) {
@@ -3874,7 +3737,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.addEventListener('touchend', function(e) {
     // Ignore taps inside the bottom bar or any overlay/panel
-    if (e.target.closest('.bottom-bar, #mobExtrasPanel, .measure-slider-panel, #bpmSliderPanel, #notePanel, #backingPanel, #pinScreen')) return;
+    if (e.target.closest('.bottom-bar, #mobExtrasPanel, .measure-slider-panel, #bpmSliderPanel, #notePanel, #backingPanel')) return;
 
     // Only active in step-by-step mode (stepNav visible)
     const stepNav = document.getElementById('stepNav');

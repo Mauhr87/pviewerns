@@ -18,37 +18,6 @@
 </head>
 <body>
 
-<!-- ── PIN LOCK SCREEN ─────────────────────────────── -->
-<div id="pinScreen" class="pin-screen">
-  <!-- Title / branding -->
-  <div class="pin-title-block">
-    <img src="icons/icon-192.png" class="pin-logo-img" alt="KeyPlay">
-    <div class="pin-app-name">KeyPlay</div>
-    <div class="pin-subtitle">Ingresa tu PIN para continuar</div>
-  </div>
-
-  <!-- Card: dots + pad -->
-  <div class="pin-card">
-    <div id="pinDots" class="pin-dots"></div>
-    <div id="pinError" class="pin-error"></div>
-    <div class="pin-grid">
-      <button class="pin-key" onclick="pinKey('1')">1</button>
-      <button class="pin-key" onclick="pinKey('2')">2</button>
-      <button class="pin-key" onclick="pinKey('3')">3</button>
-      <button class="pin-key" onclick="pinKey('4')">4</button>
-      <button class="pin-key" onclick="pinKey('5')">5</button>
-      <button class="pin-key" onclick="pinKey('6')">6</button>
-      <button class="pin-key" onclick="pinKey('7')">7</button>
-      <button class="pin-key" onclick="pinKey('8')">8</button>
-      <button class="pin-key" onclick="pinKey('9')">9</button>
-      <button class="pin-key pin-del" onclick="pinDel()">⌫</button>
-      <button class="pin-key" onclick="pinKey('0')">0</button>
-      <button class="pin-key pin-ok" onclick="pinSubmit()">✓</button>
-    </div>
-  </div>
-</div>
-
-
 <!-- TOP BAR -->
 <div class="top-bar">
   <div class="logo"><img src="header-logo.png" alt="KeyPlay"> KeyPlay</div>
@@ -131,14 +100,6 @@
         <input type="checkbox" id="midiToggle" onchange="onMidiToggleChange(this.checked)">
         <span class="toggle-track"></span>
       </label>
-    </div>
-
-    <div class="settings-row">
-      <div>
-        <div class="settings-row-label">Reconectar piano</div>
-        <div class="settings-row-sub">Úsalo si no responde tras desbloquear la tablet o al abrir la app con el cable ya conectado</div>
-      </div>
-      <button type="button" class="settings-action-btn" onclick="refreshMidiConnection()">↻ Reconectar</button>
     </div>
 
     <div class="settings-row">
@@ -306,9 +267,8 @@
       <select id="mobMidiSelect" class="midi-select"
         onchange="selectMIDIDevice(this.value)"
         style="flex:1;min-width:0;font-size:13px"></select>
-      <button type="button" class="midi-refresh-btn" onclick="refreshMidiConnection()"
-        title="Volver a detectar el piano (úsalo si no responde tras desbloquear la tablet o al abrir la app con el cable ya conectado)">↻</button>
     </div>
+  </div>
   
   <div class="mob-extras-section" id="mobBackingSection">
     <div class="mob-extras-title">🎵 Backing track</div>
@@ -335,8 +295,6 @@
       </div>
     </div>
   </div>
-
-</div>
 
 </div>
 
@@ -469,8 +427,6 @@
       <span class="midi-dot" id="midiDot"></span>
       <select id="midiSelect" class="midi-select" onchange="selectMIDIDevice(this.value)"
         title="Dispositivo MIDI"></select>
-      <button type="button" class="midi-refresh-btn" onclick="refreshMidiConnection()"
-        title="Volver a detectar el piano (úsalo si no responde tras desbloquear o al abrir con el cable ya conectado)">↻</button>
     </div>
   </div>
 
