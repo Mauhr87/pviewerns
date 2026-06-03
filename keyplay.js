@@ -1764,6 +1764,13 @@ let followErrorSoundEnabled = localStorage.getItem('pv_follow_error_sound') === 
 let lastFollowErrorSoundAt = 0;
 let incompleteChordTimer = null;
 const INCOMPLETE_CHORD_GRACE_MS = 700;
+const MIDI_STATE_REFRESH_DEBOUNCE_MS = 400;
+const MIDI_ACTIVE_PORT_GRACE_MS = 2500;
+const PEDAL_DOWN_THRESHOLD = 1;
+const PEDAL_CC_SUSTAIN = 64;   // right pedal: sustain, no app action
+const PEDAL_CC_SOSTENUTO = 66; // middle pedal: next step
+const PEDAL_CC_SOFT = 67;      // left pedal: previous step
+const pedalControlValues = new Map();
 
 function resetFollowInputState(options = {}) {
   const { clearHighlights = false } = options;
@@ -1879,22 +1886,59 @@ function playFollowErrorSound() {
   });
 }
 
-// Debounced wrapper for refreshMIDIDevices — the Casio AP-470 (and similar
-// digital pianos) trigger onstatechange on every pedal press because the OS
-// briefly re-enumerates the MIDI ports. Without debouncing, each pedal press
-// shows a spurious "conectado/desconectado" alert. 400 ms swallows the noise.
 let _midiRefreshTimer = null;
-function debouncedRefreshMIDIDevices() {
+let _activeMidiStateTimer = null;
+
+function clearMidiStateTimers() {
   clearTimeout(_midiRefreshTimer);
-  _midiRefreshTimer = setTimeout(refreshMIDIDevices, 400);
+  clearTimeout(_activeMidiStateTimer);
+  _midiRefreshTimer = null;
+  _activeMidiStateTimer = null;
+}
+
+function debouncedRefreshMIDIDevices(options = {}) {
+  clearTimeout(_midiRefreshTimer);
+  _midiRefreshTimer = setTimeout(() => refreshMIDIDevices(options), MIDI_STATE_REFRESH_DEBOUNCE_MS);
+}
+
+function validateActiveMIDIState(portId) {
+  clearTimeout(_activeMidiStateTimer);
+  _activeMidiStateTimer = setTimeout(() => {
+    _activeMidiStateTimer = null;
+    if (!midiAccess || !midiInput || midiInput.id !== portId) return;
+    const activePort = midiAccess.inputs.get(portId);
+    if (activePort && activePort.state !== 'disconnected') {
+      updateMIDIDot(true);
+      updateFollowBtn();
+      return;
+    }
+    refreshMIDIDevices({ preserveActive: false });
+  }, MIDI_ACTIVE_PORT_GRACE_MS);
+}
+
+// The Casio AP-470 can emit Web MIDI statechange events on every pedal press.
+// Treat statechanges for the selected input as transient first; reconnect only
+// if the port is still missing after the grace period. Manual refresh remains
+// immediate via the refresh button.
+function handleMIDIStateChange(e) {
+  if (localStorage.getItem('pv_midi') !== 'on') return;
+  const port = e?.port;
+
+  if (port?.type === 'input' && midiInput && port.id === midiInput.id) {
+    validateActiveMIDIState(port.id);
+    return;
+  }
+
+  debouncedRefreshMIDIDevices({ preserveActive: true });
 }
 
 async function initMIDI() {
   if (!navigator.requestMIDIAccess) return; // unsupported browser
+  clearMidiStateTimers();
   try {
     midiAccess = await navigator.requestMIDIAccess({ sysex: false });
     refreshMIDIDevices();
-    midiAccess.onstatechange = debouncedRefreshMIDIDevices;
+    midiAccess.onstatechange = handleMIDIStateChange;
   } catch(e) { /* user denied permission — silently skip */ }
 }
 
@@ -1913,12 +1957,13 @@ async function refreshMidiConnection() {
   }
   const prevId = midiInput ? midiInput.id : null;
   try {
+    clearMidiStateTimers();
     // Re-request access to force a fresh, current view of the device list.
     midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-    midiAccess.onstatechange = debouncedRefreshMIDIDevices;
+    midiAccess.onstatechange = handleMIDIStateChange;
     refreshMIDIDevices();
 
-    const inputs = Array.from(midiAccess.inputs.values());
+    const inputs = Array.from(midiAccess.inputs.values()).filter(inp => inp.state !== 'disconnected');
     if (!inputs.length) {
       showToast('No se detectó ningún piano MIDI. Revisa el cable.', true);
       return;
@@ -1939,21 +1984,30 @@ async function refreshMidiConnection() {
   }
 }
 
-function refreshMIDIDevices() {
-  const inputs  = Array.from(midiAccess.inputs.values());
+function refreshMIDIDevices(options = {}) {
+  if (!midiAccess) return;
+  const { preserveActive = false } = options;
+  const inputs  = Array.from(midiAccess.inputs.values()).filter(inp => inp.state !== 'disconnected');
   const sel     = document.getElementById('midiSelect');
   const mobSel  = document.getElementById('mobMidiSelect');
   const dot     = document.getElementById('midiDot');
   const ctrl    = document.getElementById('midiControl');
   const fBtn    = document.getElementById('followBtn');
   const mobSect = document.getElementById('mobMidiSection');
+  const hasActiveInput = midiInput && inputs.some(inp => inp.id === midiInput.id);
+
+  if (preserveActive && midiInput && !hasActiveInput) {
+    updateMIDIDot(true);
+    updateFollowBtn();
+    return;
+  }
 
   // Populate both selects identically
   [sel, mobSel].forEach(s => { if (s) s.innerHTML = ''; });
 
   if (!inputs.length) {
-    ctrl.style.display  = 'none';
-    fBtn.style.display  = 'none';
+    if (ctrl) ctrl.style.display = 'none';
+    if (fBtn) fBtn.style.display = 'none';
     if (mobSect) mobSect.style.display = 'none';
     if (midiInput) disconnectMIDI();
     return;
@@ -1969,8 +2023,8 @@ function refreshMIDIDevices() {
     });
   });
 
-  ctrl.style.display  = 'flex';
-  fBtn.style.display  = 'flex';
+  if (ctrl) ctrl.style.display = 'flex';
+  if (fBtn) fBtn.style.display = 'flex';
   if (mobSect) mobSect.style.display = '';
 
   // Auto-select if only one device (or reconnection of known device)
@@ -1980,11 +2034,15 @@ function refreshMIDIDevices() {
     // Already on this device: just re-open/re-bind (don't tear down mid-session).
     if (midiInput && midiInput.id === inputs[0].id) {
       midiInput = inputs[0];
-      bindMidiInput(midiInput);
+      if (preserveActive) midiInput.onmidimessage = onMIDIMessage;
+      else bindMidiInput(midiInput);
       updateMIDIDot(true);
       updateFollowBtn();
-    } else {
+    } else if (!preserveActive || !midiInput) {
       selectMIDIDevice(inputs[0].id);
+    } else {
+      updateMIDIDot(true);
+      updateFollowBtn();
     }
   } else if (midiInput && midiAccess.inputs.has(midiInput.id)) {
     if (sel)    sel.value    = midiInput.id;
@@ -2009,6 +2067,7 @@ function selectMIDIDevice(id) {
 }
 
 function disconnectMIDI() {
+  pedalControlValues.clear();
   if (midiInput) { midiInput.onmidimessage = null; midiInput = null; }
   if (followMode) disableFollowMode();
   updateMIDIDot(false);
@@ -2035,6 +2094,23 @@ function updateFollowBtn() {
   if (!btn) return;
   btn.disabled = !midiInput;
 
+}
+
+function handlePedalControlChange(controller, value) {
+  if (controller !== PEDAL_CC_SUSTAIN &&
+      controller !== PEDAL_CC_SOSTENUTO &&
+      controller !== PEDAL_CC_SOFT) {
+    return false;
+  }
+
+  const wasDown = (pedalControlValues.get(controller) || 0) >= PEDAL_DOWN_THRESHOLD;
+  const isDown = value >= PEDAL_DOWN_THRESHOLD;
+  pedalControlValues.set(controller, value);
+  if (!isDown || wasDown) return true;
+
+  if (controller === PEDAL_CC_SOFT) changeStep(-1);
+  if (controller === PEDAL_CC_SOSTENUTO) changeStep(1);
+  return true;
 }
 
 // ── MIDI message handler ──────────────────────────────
@@ -2064,12 +2140,12 @@ function onMIDIMessage(e) {
       if (releaseTimers[note]) { clearTimeout(releaseTimers[note]); delete releaseTimers[note]; }
     }
     if (followPlaying) clearCorrectKey(note);
-  } else if (cmd === 0xB0 && vel > 0) {
+  } else if (cmd === 0xB0) {
     // Control Change — pedal navigation (Casio AP-470)
     // CC 66 = sostenuto (pedal central)  → paso siguiente
     // CC 67 = soft      (pedal izquierdo) → paso anterior
-    if (note === 67) changeStep(-1); // pedal izquierdo: retroceder
-    if (note === 66) changeStep(1);  // pedal central:   avanzar
+    // CC 64 = sustain   (pedal derecho)   → sin acción en Keyplay
+    handlePedalControlChange(note, vel);
   }
 }
 
@@ -2254,6 +2330,7 @@ function onMidiToggleChange(enabled) {
     initMIDI();
   } else {
     // Disconnect and hide all MIDI UI
+    clearMidiStateTimers();
     disconnectMIDI();
     if (midiAccess) {
       midiAccess.onstatechange = null;
