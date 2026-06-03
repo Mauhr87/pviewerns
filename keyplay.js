@@ -2054,6 +2054,12 @@ function onMIDIMessage(e) {
       if (releaseTimers[note]) { clearTimeout(releaseTimers[note]); delete releaseTimers[note]; }
     }
     if (followPlaying) clearCorrectKey(note);
+  } else if (cmd === 0xB0 && vel > 0) {
+    // Control Change — pedal navigation (Casio AP-470)
+    // CC 66 = sostenuto (pedal central)  → paso siguiente
+    // CC 67 = soft      (pedal izquierdo) → paso anterior
+    if (note === 67) changeStep(-1); // pedal izquierdo: retroceder
+    if (note === 66) changeStep(1);  // pedal central:   avanzar
   }
 }
 
