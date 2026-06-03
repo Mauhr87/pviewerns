@@ -1879,12 +1879,22 @@ function playFollowErrorSound() {
   });
 }
 
+// Debounced wrapper for refreshMIDIDevices — the Casio AP-470 (and similar
+// digital pianos) trigger onstatechange on every pedal press because the OS
+// briefly re-enumerates the MIDI ports. Without debouncing, each pedal press
+// shows a spurious "conectado/desconectado" alert. 400 ms swallows the noise.
+let _midiRefreshTimer = null;
+function debouncedRefreshMIDIDevices() {
+  clearTimeout(_midiRefreshTimer);
+  _midiRefreshTimer = setTimeout(refreshMIDIDevices, 400);
+}
+
 async function initMIDI() {
   if (!navigator.requestMIDIAccess) return; // unsupported browser
   try {
     midiAccess = await navigator.requestMIDIAccess({ sysex: false });
     refreshMIDIDevices();
-    midiAccess.onstatechange = refreshMIDIDevices;
+    midiAccess.onstatechange = debouncedRefreshMIDIDevices;
   } catch(e) { /* user denied permission — silently skip */ }
 }
 
@@ -1905,7 +1915,7 @@ async function refreshMidiConnection() {
   try {
     // Re-request access to force a fresh, current view of the device list.
     midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-    midiAccess.onstatechange = refreshMIDIDevices;
+    midiAccess.onstatechange = debouncedRefreshMIDIDevices;
     refreshMIDIDevices();
 
     const inputs = Array.from(midiAccess.inputs.values());
