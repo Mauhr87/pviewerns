@@ -1692,11 +1692,14 @@ let lastFollowErrorSoundAt = 0;
 let incompleteChordTimer = null;
 const INCOMPLETE_CHORD_GRACE_MS = 700;
 const MIDI_STATE_REFRESH_DEBOUNCE_MS = 400;
-const PEDAL_DOWN_THRESHOLD = 1;
+const MIDI_SOFT_REBIND_DELAYS_MS = [120, 600, 1400, 2600, 5000];
+const PEDAL_DOWN_THRESHOLD = 64;
+const PEDAL_REPRESS_FALLBACK_MS = 350;
 const PEDAL_CC_SUSTAIN = 64;   // right pedal: sustain, no app action
 const PEDAL_CC_SOSTENUTO = 66; // middle pedal: next step
 const PEDAL_CC_SOFT = 67;      // left pedal: previous step
 const pedalControlValues = new Map();
+const pedalLastActionAt = new Map();
 
 function resetFollowInputState(options = {}) {
   const { clearHighlights = false } = options;
@@ -1813,10 +1816,13 @@ function playFollowErrorSound() {
 }
 
 let _midiRefreshTimer = null;
+let _midiSoftRebindTimers = [];
 
 function clearMidiStateTimers() {
   clearTimeout(_midiRefreshTimer);
+  _midiSoftRebindTimers.forEach(t => clearTimeout(t));
   _midiRefreshTimer = null;
+  _midiSoftRebindTimers = [];
 }
 
 function debouncedRefreshMIDIDevices(options = {}) {
@@ -1824,14 +1830,40 @@ function debouncedRefreshMIDIDevices(options = {}) {
   _midiRefreshTimer = setTimeout(() => refreshMIDIDevices(options), MIDI_STATE_REFRESH_DEBOUNCE_MS);
 }
 
+function softRebindActiveMIDIInput() {
+  if (!midiAccess || !midiInput) return;
+  const currentId = midiInput.id;
+  const currentPort = midiAccess.inputs.get(currentId);
+  if (currentPort && currentPort.state !== 'disconnected') {
+    midiInput = currentPort;
+    midiInput.onmidimessage = onMIDIMessage;
+    updateMIDIDot(true);
+    updateFollowBtn();
+  }
+}
+
+function scheduleSoftRebindActiveMIDIInput() {
+  _midiSoftRebindTimers.forEach(t => clearTimeout(t));
+  _midiSoftRebindTimers = MIDI_SOFT_REBIND_DELAYS_MS.map(delay => {
+    const timer = setTimeout(() => {
+      softRebindActiveMIDIInput();
+      _midiSoftRebindTimers = _midiSoftRebindTimers.filter(t => t !== timer);
+    }, delay);
+    return timer;
+  });
+}
+
 // The Casio AP-470 can emit Web MIDI statechange events on every pedal press.
-// Once a piano is selected, ignore those browser statechange events entirely:
-// no refresh, no re-open, no reconnect.
+// If Chrome swaps the underlying port object, reattach only the message handler.
+// Do not call requestMIDIAccess(), refresh the device list, or open() the port here.
 function handleMIDIStateChange(e) {
   if (localStorage.getItem('pv_midi') !== 'on') return;
   const port = e?.port;
 
-  if (midiInput) return;
+  if (midiInput) {
+    if (!port || port.type === 'input') scheduleSoftRebindActiveMIDIInput();
+    return;
+  }
   if (port?.type !== 'input') return;
 
   debouncedRefreshMIDIDevices({ preserveActive: true });
@@ -1931,6 +1963,7 @@ function selectMIDIDevice(id) {
 
 function disconnectMIDI() {
   pedalControlValues.clear();
+  pedalLastActionAt.clear();
   if (midiInput) { midiInput.onmidimessage = null; midiInput = null; }
   if (followMode) disableFollowMode();
   updateMIDIDot(false);
@@ -1969,7 +2002,12 @@ function handlePedalControlChange(controller, value) {
   const wasDown = (pedalControlValues.get(controller) || 0) >= PEDAL_DOWN_THRESHOLD;
   const isDown = value >= PEDAL_DOWN_THRESHOLD;
   pedalControlValues.set(controller, value);
-  if (!isDown || wasDown) return true;
+  if (!isDown) return true;
+
+  const now = performance.now();
+  const lastActionAt = pedalLastActionAt.get(controller) || 0;
+  if (wasDown && now - lastActionAt < PEDAL_REPRESS_FALLBACK_MS) return true;
+  pedalLastActionAt.set(controller, now);
 
   if (controller === PEDAL_CC_SOFT) changeStep(-1);
   if (controller === PEDAL_CC_SOSTENUTO) changeStep(1);
